@@ -35,8 +35,8 @@ def BFS(garp: dict[str, list[str]], start: str):
 
 
 
-grap = {"a": ["b", "c"], "b": ["a"], "c": ["a"]}
+# grap = {"a": ["b", "c"], "b": ["a"], "c": ["a"]}
 
-DFS(grap,"a",dict())
-BFS(grap,"a")
-GenericSearch(grap,"a")
+# DFS(grap,"a",dict())
+# BFS(grap,"a")
+# GenericSearch(grap,"a")
