@@ -34,27 +34,3 @@ def pruferSequence(tree: dict[str, list[str]]):
 
 
     return ans
-
-
-def KruskalMST(grap: dict[str, list[tuple[str,int]]]):
-
-    edges=[]
-    for node in grap:
-        for cNode, cost in grap[node]:
-            edges.append((cost,node,cNode))
-
-    edges.sort(key= lambda cost,_,_: cost)
-
-
-    tree=[]
-
-    nodes=set()
-    i=0
-    while len(nodes)<len(grap):
-        
-
-
-
-
-
-
