@@ -1,5 +1,10 @@
 
 from collections import defaultdict
+
+
+
+
+
 def cycleCrossover(parent1, parent2, start):
     child=[0 for i in range(len(parent1))]
     child[start]=parent1[start]
