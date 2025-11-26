@@ -34,21 +34,21 @@ def binPacking(boxes:list, bin: int):
 
         return count
 
-    def numOfBinsAndHowFullEach(gen: list, bin: int):
+    def numOfBinsAndHowFullEach(gen: list, bin: int, maxBoxes: int):
         current=0
         point=1.0
         for i in gen:
             if i+current<=bin:
                 current+=i
             else:
-                point+=1.0+(bin-current)/bin
+                point+=1.0+(bin-current)/bin/maxBoxes
                 current=i
 
         return point
 
 
     def evalua(gen: list):
-        return numOfBinsAndHowFullEach(gen,bin)
+        return numOfBinsAndHowFullEach(gen,bin,len(boxes))
 
     
 
