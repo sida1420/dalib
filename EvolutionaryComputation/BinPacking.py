@@ -3,8 +3,10 @@ from collections import defaultdict
 import queue
 
 def binPacking(boxes:list, bin: int):
-    gensSize=10
-    #init 10 random
+
+    #How many in each generation
+    gensSize=100
+
     def init():
         
         gen=[]
@@ -18,11 +20,9 @@ def binPacking(boxes:list, bin: int):
             gen.append(boxes[temp])
         return gen
     
-    gens=[init() for i in range(0,gensSize)]
 
 
-    def evalua(gen: list):
-
+    def numOfBins(gen: list, bin: int):
         current=0
         count=1
         for i in gen:
@@ -34,6 +34,24 @@ def binPacking(boxes:list, bin: int):
 
         return count
 
+    def numOfBinsAndHowFullEach(gen: list, bin: int):
+        current=0
+        point=1.0
+        for i in gen:
+            if i+current<=bin:
+                current+=i
+            else:
+                point+=1.0+(bin-current)/bin
+                current=i
+
+        return point
+
+
+    def evalua(gen: list):
+        return numOfBinsAndHowFullEach(gen,bin)
+
+    
+
     def selection(gens , percent):
         ranking=[]
         for gen in gens:
@@ -41,8 +59,8 @@ def binPacking(boxes:list, bin: int):
 
         ranking.sort()
 
-        for score, gen in ranking:
-            print(score, gen)
+        # for score, gen in ranking:
+        #     print(score, gen)
 
         newGens=[]
         n=int(len(ranking)*percent)
@@ -108,13 +126,15 @@ def binPacking(boxes:list, bin: int):
 
         return newGens+gens
 
-
+    #Loop
     end=100
     bestScore=len(boxes)
     bestGen=[]
     
+    gens=[init() for i in range(0,gensSize)]
+
     for i in range(0,end):
-        print("\tNEW GEN")
+        # print("\tNEW GEN")
         score, gens=selection(gens,0.5)
         if bestScore>=score:
             bestScore=score
