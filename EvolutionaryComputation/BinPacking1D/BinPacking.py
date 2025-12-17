@@ -57,7 +57,7 @@ def binPackingBF(boxes: list, bin: int):
 
                 
             boxUsed[b]+=1
-            
+    
         
     boxUsed={}
     for box in boxes:

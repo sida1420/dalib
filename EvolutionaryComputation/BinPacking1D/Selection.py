@@ -34,7 +34,7 @@ def sqrtHowFullEach(gen: list, bin:  int, boxes):
             point+=(current)**0.5
             current=boxes[i]
     return point 
-
+#
 
 def evalua(gen: list, boxes, bin):
     return sqrtHowFullEach(gen,bin,boxes)
