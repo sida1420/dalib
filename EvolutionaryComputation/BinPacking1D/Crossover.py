@@ -27,10 +27,13 @@ def cycleCrossover(parent1, parent2, start):
             child[i]=subChild[i]
     return child
 
-
+import random
 def crossover(gens, percent):        
     newGens=[]
     n=int(len(gens)*percent)-1
+    
+    random.shuffle(gens)
+
     for i in range(0,n,2):
         newGens.append(cycleCrossover(gens[i],gens[i+1],0))
         newGens.append(cycleCrossover(gens[i+1],gens[i],0))
