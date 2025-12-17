@@ -19,7 +19,7 @@ def binPackingGA(boxes:list, bin: int):
     
     gens=[Initialize.init(boxes) for i in range(0,gensSize)]
 
-    #Selection percent: 40%
+    #Selection percent: 35% elites - 5% diversities
     #Crossover percent: 100%
     #Mutation percent: 40% (until meet gen size)
 
