@@ -11,3 +11,14 @@ def StandardDeviation(fitnesses):
 
     sd=(sd/len(fitnesses))**0.5
     return sd
+
+def stats(fitnesses):
+    aver=0
+    worst=10**12
+    best=0
+    for fitness in fitnesses:
+        worst=min(worst,fitness)
+        best=max(best,fitness)
+        aver+=fitness
+
+    return aver/len(fitnesses), best, worst

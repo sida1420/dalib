@@ -2,7 +2,7 @@ import random
 from collections import defaultdict
 import queue
 import matplotlib
-matplotlib.use("TkAgg")   # or "Agg" (no GUI)
+matplotlib.use("TkAgg")
 
 import matplotlib.pyplot as plt
 
@@ -17,44 +17,66 @@ def binPackingGA(boxes:list, bin: int):
     bestScore=0
     bestGen=[]
     
+    #Init
     gens=[Initialize.init(boxes) for i in range(0,gensSize)]
+
+    #If best don't change after maxWait then stop
+    maxWait=100
+    currentWait=0
 
     #Selection percent: 35% elites - 5% diversities
     #Crossover percent: 100%
-    #Mutation percent: 40% (until meet gen size)
+    #Mutation percent: 40% (until meet gen size) - 50% permutation / 25% inversion / 25% chunkMove
 
     #Graph
     avers=[]
+    worsts=[]
+    bests=[]
     iterations=[]
     sds=[]
 
     for i in range(0,end):
         print("\tNEW GEN")
-
+        #Get stats for graph
         fitnesses=[Selection.evalua(gen,boxes,bin) for gen in gens]
-        avers.append(StandardDeviation.Average(fitnesses))
+        a, b, w = StandardDeviation.stats(fitnesses)
+        avers.append(a)
+        bests.append(b)
+        worsts.append(w)
         iterations.append(i)
         sds.append(StandardDeviation.StandardDeviation(fitnesses))
 
+        #Selection
         score, gens=Selection.selection(gens,0.35,0.05,boxes,bin)
+
+        #Store best
         if bestScore<score:
             bestScore=score
             bestGen=gens[0]
-
+            currentWait=0
+        else:
+            currentWait+=1
+            if currentWait>=maxWait:
+                break
+        #Crossover
         gens=Crossover.crossover(gens,1)
-        gens=Mutation.mutation(gens,0.4, gensSize).copy()
+        #Mutation
+        gens=Mutation.mutation(gens,0.4, gensSize)
 
     print("\tBEST\n",bestScore,Selection.numOfBins(bestGen,boxes,bin),[boxes[i] for i in bestGen])
 
-    # plt.plot(iterations,avers,label="Average")
+    plt.plot(iterations,avers,label="Average")
+    plt.plot(iterations,bests,label="Best")
+    plt.plot(iterations,worsts,label="Worst")
     plt.plot(iterations,sds,label="StandardDeviation")
     plt.legend()
     plt.xlabel('Generation')
     plt.show()
 
 
+
     
-    return bestScore
+    return Selection.numOfBins(bestGen,boxes,bin)
     
 
 def binPackingBF(boxes: list, bin: int):
@@ -123,10 +145,17 @@ def read_falkenauer(path):
 
 problems=read_falkenauer("/home/daxanity/Code/python/dalib/EvolutionaryComputation/BinPacking1D/dataset.txt")
 
-items=problems[2]["items"]
-bin_capacity=problems[2]["capacity"]
+foundOptimal=0
 
-binPackingGA(items,bin_capacity)
-print("Actual best = ",problems[2]["best"])
+for problem in problems:
+
+    items=problem["items"]
+    bin_capacity=problem["capacity"]
+    optimal=binPackingGA(items,bin_capacity)
+    print("Actual best = ",problem["best"])
+    if optimal==problem["best"]:
+        foundOptimal+=1
+    break
 
 
+print("Success rate: ",foundOptimal/len(problems))
