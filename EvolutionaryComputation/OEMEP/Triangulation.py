@@ -34,8 +34,9 @@ def earClipping(polygon):
     done=n
 
     while done>2:
-        i=task.get()
-        ob=cl.Obstacle(points=[polygon.points[work[i].prev],polygon.points[work[i].i],polygon.points[work[i].next]],coeff=polygon.coeff)
+        i=task.get_nowait()
+        
+        ob=cl.Triangle(points=[polygon.points[work[i].prev],polygon.points[work[i].i],polygon.points[work[i].next]],coeff=polygon.coeff)
 
         safe=True
         for j in reflex:

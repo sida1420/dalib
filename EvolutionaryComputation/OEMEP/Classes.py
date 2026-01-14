@@ -84,14 +84,13 @@ def intersection(p, e):
     p2=Point(e.x2,e.y2)
 
     if p2.y==p1.y:
-        return p
+        return None
     
     t=(p.y-p1.y)/(p2.y-p1.y)
     
-    
 
     if t<0 or t>1:
-        return p
+        return None
     return Point(t*(p2.x-p1.x)+p1.x,p.y)
 
 
@@ -145,7 +144,7 @@ class Obstacle:
                 attempt=midpoint+direction*distance
 
                 i=0
-                while i<5 and (collide(Edge(attempt.x,attempt.y,p1.x,p1.y)) or collide(Edge(attempt.x,attempt.y,p2.x,p2.y))):
+                while i<5 and ((attempt.x<-w or attempt.y<-h or attempt.x>w or attempt.y >h) or (collide(Edge(attempt.x,attempt.y,p1.x,p1.y)) or collide(Edge(attempt.x,attempt.y,p2.x,p2.y)))):
                     distance/=2
                     attempt=midpoint+direction*distance
                     i+=1
@@ -184,7 +183,7 @@ class Obstacle:
         for i in range(len(self.points)):
             edge=Edge(self.points[i].x,self.points[i].y,self.points[(i+1)%len(self.points)].x,self.points[(i+1)%len(self.points)].y)
             inter=intersection(p,edge)
-            if inter==p:
+            if inter is None:
                 continue
             if inter.x>p.x:
                 right+=1
@@ -192,11 +191,24 @@ class Obstacle:
                 left+=1
         return right%2==1 and left%2==1
 
+    def lineIntersect(self, e):
+        for i in range(len(self.points)):
+            edge=Edge(self.points[i].x,self.points[i].y,self.points[(i+1)%len(self.points)].x,self.points[(i+1)%len(self.points)].y)
+            if e.intersect(edge):
+                return True
+        return False
+
+
     def draw(self):
         return [(p.x, p.y) for p in self.points]
 
+class Triangle(Obstacle):
+    def pointIntersect(self, p):
+        d1=orientation(self.points[0].x,self.points[0].y,self.points[1].x,self.points[1].y,p.x,p.y)
+        d2=orientation(self.points[1].x,self.points[1].y,self.points[2].x,self.points[2].y,p.x,p.y)
+        d3=orientation(self.points[2].x,self.points[2].y,self.points[0].x,self.points[0].y,p.x,p.y)
 
-
+        return d1<0 and d2<0 and d3<0
 
 class Sensor:
     def __init__(self, w, h, r=None, a=None):
@@ -213,3 +225,19 @@ class Sensor:
     def thetaR(self):
         return toAngle(rotate(self.dir,self.angle/2))*180/math.pi
         
+class Rectangle:
+    def __init__(self, points):
+        self.x1=0
+        self.y1=0
+        self.x2=0
+        self.y2=0
+        for p in points:
+            self.x1=min(self.x1,p.x)
+            self.y1=min(self.y1,p.y)
+            self.x2=max(self.x2,p.x)
+            self.y2=max(self.y2,p.y)
+
+    def intersect(self, other):
+        if isinstance(other,Rectangle):
+            return (self.x1<other.x2 and self.x2>other.x1 and self.y1<other.y2 and self.y2>other.y1)
+        return other.x>self.x1 and other.y>self.y1 and other.x<self.x2 and other.y<self.y2
