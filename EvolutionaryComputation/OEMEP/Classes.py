@@ -14,7 +14,11 @@ class Point:
         if isinstance(other,Point):
             return self.x*other.x+ self.y*other.y
         return Point(self.x*other,self.y*other)
+    def __truediv__(self,other):
+        return Point(self.x/other,self.y/other)
 
+    def __eq__(self,other):
+        return self.x==other.x and self.y==other.y
     def dist(self,other):
         return math.sqrt((self.x-other.x)**2+(self.y-other.y)**2)
 
@@ -23,6 +27,11 @@ class Point:
 
     def __repr__(self):
         return f"{round(self.x)} {round(self.y)}"
+    def __call__(self):
+        return (self.x,self.y)
+    def __hash__(self):
+        return hash((self.x, self.y))
+    
 
 
 def orientation(x1, y1, x2, y2, x3, y3):
@@ -66,21 +75,49 @@ def rotate(dir, angle):
     theta+=angle
     return Point(math.cos(theta),math.sin(theta))
 
+def angle(vec1, vec2):
+    return math.acos((vec1*vec2)/(abs(vec1)*abs(vec2)))
+
+
+def intersection(p, e):
+    p1=Point(e.x1,e.y1)
+    p2=Point(e.x2,e.y2)
+
+    if p2.y==p1.y:
+        return p
+    
+    t=(p.y-p1.y)/(p2.y-p1.y)
+    
+    
+
+    if t<0 or t>1:
+        return p
+    return Point(t*(p2.x-p1.x)+p1.x,p.y)
+
+
 class Obstacle:
-    def __init__(self, w, h):
+    def __init__(self, w=None, h=None, points=None, coeff=None):
+        self.coeff=random.random() if coeff is None else coeff
+        if points is not None:
+            self.points=points
+            return
         w=w/2
         h=h/2
-        self.points=[Point(rd.uniform(-w,w),rd.uniform(-h,h)) for i in range(3)]
+        self.points=[Point(rd.uniform(-w,w),rd.uniform(-h,h)) for i in range(4)]
+        origin=Point(0,0)
+        for p in self.points:
+            origin+=p
+        origin/=len(self.points)
 
-        a_p=[(toAngle(point),point) for point in self.points]
+        a_p=[(toAngle(point-origin),point) for point in self.points]
         a_p.sort(key=lambda data: data[0])
         self.points=[data[1] for data in a_p]
 
 
         edges=set()
 
-        for i in range(3):
-            edge=(self.points[i],self.points[(i+1)%3])
+        for i in range(4):
+            edge=(self.points[i],self.points[(i+1)%4])
 
             edges.add(edge)
 
@@ -101,17 +138,18 @@ class Obstacle:
                 edge=(p1,p2)
 
 
-                midpoint=(p2-p1)*rd.random()+p1
-                direction=Point(rd.uniform(-math.pi,math.pi),rd.uniform(-math.pi,math.pi))
-                distance=rd.uniform(0,abs(p2-p1)/2)
+                midpoint=(p2-p1)*rd.uniform(0,1)+p1
+                direction=(p2-p1)/p2.dist(p1)
+                direction=Point(direction.y,-direction.x)*rd.choice([1,-1])
+                distance=rd.uniform(0,abs(p2-p1)*0.5)
                 attempt=midpoint+direction*distance
 
                 i=0
-                while i<10 and (collide(Edge(attempt.x,attempt.y,p1.x,p1.y)) or collide(Edge(attempt.x,attempt.y,p2.x,p2.y))):
+                while i<5 and (collide(Edge(attempt.x,attempt.y,p1.x,p1.y)) or collide(Edge(attempt.x,attempt.y,p2.x,p2.y))):
                     distance/=2
                     attempt=midpoint+direction*distance
                     i+=1
-                if i<10:
+                if i<5:
 
                     edges.remove(edge)
 
@@ -125,14 +163,13 @@ class Obstacle:
             return ans
         
         newPoints=[]
-        for i in range(3):
+        for i in range(4):
             newPoints.append(self.points[i])
-            newPoints+=reccusion(self.points[i],self.points[(i+1)%3],0.5)
+            newPoints+=reccusion(self.points[i],self.points[(i+1)%4],0.3)
         
         self.points=newPoints
 
 
-        self.coeff=random.random()
 
     def offset(self,w,h):
         offX=rd.uniform(0,w)
@@ -141,7 +178,38 @@ class Obstacle:
         for p in self.points:
             p.x+=offX
             p.y+=offY
+    def pointIntersect(self, p):
+        left=0
+        right=0
+        for i in range(len(self.points)):
+            edge=Edge(self.points[i].x,self.points[i].y,self.points[(i+1)%len(self.points)].x,self.points[(i+1)%len(self.points)].y)
+            inter=intersection(p,edge)
+            if inter==p:
+                continue
+            if inter.x>p.x:
+                right+=1
+            else:
+                left+=1
+        return right%2==1 and left%2==1
 
+    def draw(self):
+        return [(p.x, p.y) for p in self.points]
+
+
+
+
+class Sensor:
+    def __init__(self, w, h, r=None, a=None):
+
+        self.center=Point(random.uniform(0,w),random.uniform(0,h))
 
         
+        self.r=r if r is not None else  random.uniform(h/20,h/10)
+        self.angle=a if a is not None else random.uniform(math.pi/6,math.pi*2)
+        self.dir=toDir(random.uniform(-math.pi,math.pi))
+
+    def thetaL(self):
+        return toAngle(rotate(self.dir,-self.angle/2)) *180/math.pi     
+    def thetaR(self):
+        return toAngle(rotate(self.dir,self.angle/2))*180/math.pi
         
