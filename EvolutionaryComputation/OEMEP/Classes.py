@@ -21,12 +21,14 @@ class Point:
         return self.x==other.x and self.y==other.y
     def dist(self,other):
         return math.sqrt((self.x-other.x)**2+(self.y-other.y)**2)
+    def cross(self, other):
+        return self.x*other.y-self.y*other.x
 
     def __abs__(self):
         return math.sqrt(self.x**2+self.y**2)
 
     def __repr__(self):
-        return f"{round(self.x)} {round(self.y)}"
+        return f"{round(self.x,1)} {round(self.y,1)}"
     def __call__(self):
         return (self.x,self.y)
     def __hash__(self):
@@ -36,6 +38,11 @@ class Point:
 
 def orientation(x1, y1, x2, y2, x3, y3):
     return (y2-y1)*(x3-x2)-(x2-x1)*(y3-y2)
+
+def onSegment(x1,y1,x2,y2,x3,y3):
+    if min(x1,x2)<=x3 <=max(x1,x2) and min(y1,y2)<=y3<=max(y1,y2):
+        return True
+    return False
 
 class Edge:
     def __init__(self,x1,y1,x2,y2):
@@ -52,9 +59,35 @@ class Edge:
         cda=orientation(other.x1,other.y1,other.x2,other.y2,self.x1,self.y1)
         cdb=orientation(other.x1,other.y1,other.x2,other.y2,self.x2,self.y2)
 
+
+        # if abs(abc) < 1e-9 and onSegment(self.x1,self.y1,self.x2,self.y2,other.x1,other.y1): return True
+        # if abs(abd) < 1e-9 and onSegment(self.x1,self.y1,self.x2,self.y2,other.x2,other.y2): return True
+        # if abs(cda) < 1e-9 and onSegment(other.x1,other.y1,other.x2,other.y2,self.x1,self.y1): return True
+        # if abs(cdb) < 1e-9 and onSegment(other.x1,other.y1,other.x2,other.y2,self.x2,self.y2): return True
+
+
         return abc*abd<0 and cda*cdb<0
 
+    def rayIntersect(self, p1, p2):
+        a=Point(self.x1,self.y1)
+        b=Point(self.x2,self.y2)
+        r = p2 - p1
+        s = b - a
+        down=(p2-p1).cross(b-a)
+        if down==0:
+            return None
 
+        t = (a - p1).cross(s) / down
+        u = (a - p1).cross(r) / down
+
+        if t <= 0 or t >= 1:
+            return None
+        if u < 0 or u > 1:
+            return None
+
+        return t
+    def same(self,other):
+        return abs(self.x1-other.x1)<1e-9 and abs(self.x2-other.x2)<1e-9 and abs(self.y1 - other.y1)<1e-9 and abs(self.y2-other.y2)<1e-9
 
 import random as rd
 
@@ -67,7 +100,6 @@ def toDir(theta):
     theta in range -PI to PI
     """
     
-    theta*=math.pi
     return Point(math.cos(theta),math.sin(theta))
 
 def rotate(dir, angle):
@@ -76,41 +108,50 @@ def rotate(dir, angle):
     return Point(math.cos(theta),math.sin(theta))
 
 def angle(vec1, vec2):
-    return math.acos((vec1*vec2)/(abs(vec1)*abs(vec2)))
+    
+    x = (vec1 * vec2) / (abs(vec1) * abs(vec2))
+    return math.acos(max(-1.0, min(1.0, x)))
 
 
 def intersection(p, e):
     p1=Point(e.x1,e.y1)
     p2=Point(e.x2,e.y2)
 
-    if p2.y==p1.y:
+    if abs(p2.y-p1.y)<1e-9:
         return None
     
     t=(p.y-p1.y)/(p2.y-p1.y)
-    
-
     if t<0 or t>1:
         return None
-    return Point(t*(p2.x-p1.x)+p1.x,p.y)
+
+    return Point(p1.x+t*(p2.x-p1.x),p1.y)
+
 
 
 class Obstacle:
-    def __init__(self, w=None, h=None, points=None, coeff=None):
-        self.coeff=random.random() if coeff is None else coeff
+    def __init__(self, w=None, h=None, points=None, coeff=None, sorted=True):
         if points is not None:
             self.points=points
-            return
-        w=w/2
-        h=h/2
-        self.points=[Point(rd.uniform(-w,w),rd.uniform(-h,h)) for i in range(4)]
-        origin=Point(0,0)
-        for p in self.points:
-            origin+=p
-        origin/=len(self.points)
+        else:
+            w=w/2
+            h=h/2
+            self.points=[Point(rd.uniform(-w,w),rd.uniform(-h,h)) for i in range(4)]
+        self.origin=Point(0,0)
 
-        a_p=[(toAngle(point-origin),point) for point in self.points]
-        a_p.sort(key=lambda data: data[0])
-        self.points=[data[1] for data in a_p]
+        for p in self.points:
+            self.origin+=p
+            
+        self.origin/=len(self.points)
+        self.coeff=random.random() if coeff is None else coeff
+        if w is not None:
+            self.coeff/=w
+
+        if points is None or not sorted:
+            a_p=[(toAngle(point-self.origin),point) for point in self.points]
+            a_p.sort(key=lambda data: data[0])
+            self.points=[data[1] for data in a_p]
+        if points is not None:
+            return
 
 
         edges=set()
@@ -185,6 +226,7 @@ class Obstacle:
             inter=intersection(p,edge)
             if inter is None:
                 continue
+
             if inter.x>p.x:
                 right+=1
             else:
@@ -192,15 +234,169 @@ class Obstacle:
         return right%2==1 and left%2==1
 
     def lineIntersect(self, e):
+        if self.pointIntersect(Point(e.x1,e.y1)) or self.pointIntersect(Point(e.x2,e.y2)):
+            return True
         for i in range(len(self.points)):
             edge=Edge(self.points[i].x,self.points[i].y,self.points[(i+1)%len(self.points)].x,self.points[(i+1)%len(self.points)].y)
+            if edge.same(e):
+                continue
             if e.intersect(edge):
                 return True
         return False
 
+    def rayIntersect(self, p1, p2):
+        ts=[]
+        for i in range(len(self.points)):
+            edge=Edge(self.points[i].x,self.points[i].y,self.points[(i+1)%len(self.points)].x,self.points[(i+1)%len(self.points)].y)
+            t=edge.rayIntersect(p1,p2)
+            if t is not None:
+                ts.append(t)
+        ts.sort()
+        ans=[]
+        if len(ts)>0:
+            ans.append((ts[0],0))
+        for i in range(1,len(ts)):
+            if i%2==0:
+                ans.append((ts[i],ans[i-1][1]))
+            else:
+                ans.append((ts[i],ans[i-1][1]+(ts[i]-ts[i-1])))
+        
+        return ans
+        
 
     def draw(self):
         return [(p.x, p.y) for p in self.points]
+
+import bisect
+def cost(p1, p2, obstacles, preSegTs):
+    tss=[]
+    #list of list for each obstacle's ts
+
+    for ob in obstacles:
+        ts=ob.rayIntersect(p1,p2)
+        tss.append(ts)
+    
+    ans=[]
+    for j in range(len(preSegTs)):
+        total=0
+        t=(preSegTs[j],0.0)
+        if t[0] is None:
+            ans.append(0)
+            continue
+        for i in range(len(tss)):
+            if tss[i] is None:
+                continue
+            idx=bisect.bisect_right(tss[i],t)
+            if idx<=len(tss[i]):
+                if idx==0:
+                    continue
+                idx-=1
+                if idx%2==0:
+                    total+=(t[0]-tss[i][idx][0]+tss[i][idx][1])*obstacles[i].coeff*p1.dist(p2)
+                else:
+                    total+=tss[i][idx][1]*obstacles[i].coeff*p1.dist(p2)
+        ans.append(total)
+    return ans
+
+
+
+
+
+def dot(p, p1, p2):
+    ap=p-p1
+    ab=p2-p1
+
+    return (ap*ab)/(ab*ab)
+    
+
+
+def segmentProject(p, p1, p2):
+    ab=p2-p1
+    t=dot(p,p1,p2)
+
+
+    if t<0:
+        t=0
+    if t>1:
+        t=1
+
+    return ab*t+p1
+    
+
+
+def distPtoSegment(p, p1,p2):
+    p3=segmentProject(p,p1,p2)
+    if orientation(p1.x,p1.y,p2.x,p2.y,p.x,p.y)>0:
+        return abs(p3-p)
+    return -abs(p3-p)
+
+
+def inBetweenGen(p1, p2, obstacles):
+
+    if len(obstacles)==0:
+        return []
+
+
+    dists=[(distPtoSegment(p,p1,p2),p,dot(p,p1,p2)) for obstacle in obstacles for p in obstacle.points]
+    dists.sort(key= lambda d_p: d_p[0])
+
+    work=[]
+    if dists[0][0]>0 or dists[len(dists)-1][0]<0:
+        return []
+
+    if abs(dists[0][0])<abs(dists[len(dists)-1][0]):
+        for d,p,t in dists:
+            if d>0:
+                break
+            work.append((p,t))
+        
+    else:
+        for d,p,t in reversed(dists):
+            if d<0:
+                break
+            work.append((p,t))
+
+    #work is from large to small
+
+
+    def reccusion(l, r, w, limit):
+        # print(l, r, w)
+        if len(w)==0 or limit==0:
+            return []
+        p, t=w[0]
+
+        a=False
+        b=False
+        for ob in obstacles:
+            if a and b:
+                break
+            if not a:
+                a=ob.lineIntersect(Edge(l.x,l.y,p.x,p.y))
+            if not b:
+                b=ob.lineIntersect(Edge(p.x,p.y,r.x,r.y))
+
+        ans=[p]
+
+        
+        if a:
+            # print("l")
+            ans=reccusion(l,p,[d_p for d_p in w if d_p[1]<0 or d_p[1]<t],limit-1)+ans
+
+        if b:
+            # print("r")
+            ans+=reccusion(p,r,[d_p for d_p in w if d_p[1]>1 or d_p[1]>t],limit-1)
+        return ans
+    
+    return reccusion(p1,p2,work,10)
+
+    
+
+
+
+        
+
+
+
 
 class Triangle(Obstacle):
     def pointIntersect(self, p):
@@ -211,33 +407,184 @@ class Triangle(Obstacle):
         return d1<0 and d2<0 and d3<0
 
 class Sensor:
-    def __init__(self, w, h, r=None, a=None):
+    def __init__(self, w=None, h=None, dir=None, r=None, a=None, coeff=None, center=None):
 
-        self.center=Point(random.uniform(0,w),random.uniform(0,h))
-
+        self.center=Point(random.uniform(0,w),random.uniform(0,h)) if center is None else center
+        self.coeff=coeff if coeff is not None else random.uniform(0.5,1)
         
-        self.r=r if r is not None else  random.uniform(h/20,h/10)
+        self.r=r if r is not None else random.uniform(h/20,h/10)
         self.angle=a if a is not None else random.uniform(math.pi/6,math.pi*2)
-        self.dir=toDir(random.uniform(-math.pi,math.pi))
+        self.dir=toDir(random.uniform(-math.pi,math.pi)) if dir is None else dir
 
     def thetaL(self):
-        return toAngle(rotate(self.dir,-self.angle/2)) *180/math.pi     
+        return toAngle(rotate(self.dir,self.angle/2)) *180/math.pi     
     def thetaR(self):
-        return toAngle(rotate(self.dir,self.angle/2))*180/math.pi
+        return toAngle(rotate(self.dir,-self.angle/2))*180/math.pi
+    
+    def exposure(self, dir):
+        if self.dir*dir<abs(dir)*math.cos(self.angle/2):
+            return 0
+
+        return self.coeff*math.cos(angle(dir,self.dir)/2)
+        
+    def intersect(self, point):
+        if self.center.dist(point)>self.r:
+            return False
+
+        lm=rotate(self.dir,self.angle/2)*self.r+self.center
+        rm=rotate(self.dir,-self.angle/2)*self.r+self.center
+        return orientation(lm.x,lm.y,self.center.x,self.center.y,point.x,point.y)<0 and orientation(rm.x,rm.y,self.center.x,self.center.y,point.x,point.y)>0
+
+    def casting(self, obstacles, segments):
+        #10 degree each
+        theta=math.pi/18
+        lines=int(self.angle/theta)
+        n=len(segments)
+        costs=[0 for i in range(n)]
+        rays=[]
+        if lines%2==1:
+            rays.append(self.dir)
+        lines-=1
+
+        l=rotate(self.dir,-self.angle/2)
+        r=rotate(self.dir,self.angle/2)
+        while lines>0:
+            rays+=[l,r]
+            # print(l,r)
+            lines-=2
+            l=rotate(l,theta)
+            r=rotate(r,-theta)
+        
+        
+        for ray in rays:
+            ts=[]
+            p2=self.center+ray*self.r
+            for se in segments:
+                t=se.rayIntersect(self.center,p2)
+                ts.append(t)
+            reduce=cost(self.center,p2,obstacles,ts)
+            diviend=self.exposure(ray)
+            for i in range(n):
+                if ts[i] is None:
+                    continue
+                costs[i]+=max(0,(1-reduce[i]))*diviend/abs(ray*ts[i])
+
+        return costs
+
+def sensorClipping(sensor, point):
+    pt=point-sensor.center
+    fovPush=pt/abs(pt)*sensor.r-point
+
+    lm=rotate(sensor.dir,sensor.angle/2)*sensor.r+sensor.center
+    rm=rotate(sensor.dir,-sensor.angle/2)*sensor.r+sensor.center
+
+    lp=segmentProject(point,sensor.center,lm)-point
+    rp=segmentProject(point,sensor.center,rm)-point
+
+    
+
+    if abs(fovPush)<abs(lp) and abs(fovPush)<abs(rp):
+        return fovPush
+    if abs(lp)<abs(fovPush) and abs(lp)<abs(rp):
+        return lp
+    return rp
+
         
 class Rectangle:
     def __init__(self, points):
-        self.x1=0
-        self.y1=0
-        self.x2=0
-        self.y2=0
+        self.x1=1e9
+        self.y1=1e9
+        self.x2=-1e9
+        self.y2=-1e9
         for p in points:
             self.x1=min(self.x1,p.x)
             self.y1=min(self.y1,p.y)
             self.x2=max(self.x2,p.x)
             self.y2=max(self.y2,p.y)
+    
+    def __repr__(self):
+        return f"{self.x1} {self.y1}, {self.x2} {self.y2}"
 
     def intersect(self, other):
         if isinstance(other,Rectangle):
             return (self.x1<other.x2 and self.x2>other.x1 and self.y1<other.y2 and self.y2>other.y1)
         return other.x>self.x1 and other.y>self.y1 and other.x<self.x2 and other.y<self.y2
+    
+    def lineIntersect(self, p1, p2):
+        t0=0
+        t1=1
+        dx=p2.x-p1.x
+        dy=p2.y-p1.y
+
+        def clip(p, q):
+            nonlocal t0,t1
+
+            if p==0:
+                return q>0
+
+            t=q/p
+            if p>0:
+                #leaving
+                if t<t0:
+                    return False
+                if t<t1:
+                    t1=t
+            else:
+                #entering
+                if t>t1:
+                    return False
+                if t>t0:
+                    t0=t
+            return True
+        return clip(-dx,p1.x-self.x1) and clip(dx,self.x2-p1.x) and clip(-dy,p1.y-self.y1) and clip(dy,self.y2-p1.y)
+
+
+
+def SAT(ob1, ob2):
+    axes=[]
+    for i in range(len(ob1.points)):
+        vec=ob1.points[(i+1)%len(ob1.points)]-ob1.points[i]
+        vec=Point(vec.y,-vec.x)
+        vec/=abs(vec)
+        axes.append(vec)
+    for i in range(len(ob2.points)):
+        vec=ob2.points[(i+1)%len(ob2.points)]-ob2.points[i]
+        vec=Point(vec.y,-vec.x)
+        vec/=abs(vec)
+        axes.append(vec)
+    
+    for axis in axes:
+        mi1=1e9
+        ma1=-1e9
+        mi2=1e9
+        ma2=-1e9
+        for p in ob1.points:
+            t=dot(p,Point(0,0),axis)
+            mi1=min(t,mi1)
+            ma1=max(t,ma1)
+        
+        for p in ob2.points:
+            t=dot(p,Point(0,0),axis)
+            mi2=min(t,mi2)
+            ma2=max(t,ma2)
+        
+        if mi1>ma2 or ma1<mi2:
+            return False
+    return True
+
+def triesIntersect(tries1,tries2):
+    for tri1 in tries1:
+        for tri2 in tries2:
+            if SAT(tri1,tri2):
+                return True
+    return False
+
+
+def pointObstalcesCollision(p, obstacles):
+    #obstacles is list of tuple (obstacle, rec, tries)
+    for o in obstacles:
+        if o[1].intersect(p):
+            if o[0].pointIntersect(p):
+                return True
+
+    return False
