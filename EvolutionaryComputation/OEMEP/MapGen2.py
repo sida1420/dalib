@@ -5,7 +5,7 @@ import Classes as cl
 import math
 from Triangulation import earClipping
 import random
-
+import Chunking
 import Visual
 
 def obstacleGen(w,h):
@@ -56,10 +56,12 @@ def gen(w, h, obstacleCount, sensorCount):
             continue
         obstacles.append(ob)
     sensors=[]
+    chunks=Chunking.Map(w,h,w/10)
 
     while len(sensors)<sensorCount:
         se=cl.Sensor(w,h)
         if not cl.pointObstalcesCollision(se.center,obstacles):
+            chunks.insertSensor(se.center,len(sensors))
             sensors.append((se,sensorToRect(se)))
     
     start=cl.Point(random.uniform(0,w*0.25),random.uniform(0,h))
@@ -70,9 +72,11 @@ def gen(w, h, obstacleCount, sensorCount):
     while cl.pointObstalcesCollision(goal,obstacles):
         goal=cl.Point(random.uniform(w*0.75,w),random.uniform(0,h))
 
-    return {"width":w,"height":h,"obstacles":obstacles,"sensors":sensors,"start":start,"goal":goal}
+    
+
+    return {"width":w,"height":h,"obstacles":obstacles,"sensors":sensors, "chunks":chunks,"start":start,"goal":goal}
 import pickle
-map=gen(100,100,20,200)
+map=gen(100,100,0,200)
 
 Visual.map(map)
 

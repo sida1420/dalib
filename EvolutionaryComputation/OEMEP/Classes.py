@@ -16,7 +16,8 @@ class Point:
         return Point(self.x*other,self.y*other)
     def __truediv__(self,other):
         return Point(self.x/other,self.y/other)
-
+    def __neg__(self):
+        return Point(-self.x,-self.y)
     def __eq__(self,other):
         return self.x==other.x and self.y==other.y
     def dist(self,other):
@@ -267,6 +268,27 @@ class Obstacle:
     def draw(self):
         return [(p.x, p.y) for p in self.points]
 
+
+def spread(obstacle, force):
+    ans=[]
+    n=len(obstacle.points)
+    for i in range(n):
+        p=obstacle.points[i]
+        a=obstacle.points[(i-1)%n]
+        b=obstacle.points[(i+1)%n]
+        pa=a-p
+        pb=b-p
+        pa/=abs(pa)
+        pb/=abs(pb)
+        bisector=pa+pb
+        if orientation(a.x,a.y,p.x,p.y,b.x,b.y)<0:
+            bisector=-bisector
+
+
+        ans.append(p+bisector*force)
+    return ans
+
+
 import bisect
 def cost(p1, p2, obstacles, preSegTs):
     tss=[]
@@ -322,6 +344,12 @@ def segmentProject(p, p1, p2):
 
     return ab*t+p1
     
+def lineProject(p, p1,p2):
+    ab=p2-p1
+    t=dot(p,p1,p2)
+
+    return ab*t+p1
+
 
 
 def distPtoSegment(p, p1,p2):
@@ -331,63 +359,75 @@ def distPtoSegment(p, p1,p2):
     return -abs(p3-p)
 
 
-def inBetweenGen(p1, p2, obstacles):
+
+def quickhull(p1, p2, points):
+
+    up=[]
+    down=[]
+
+
+    for p in points:
+        val=orientation(p1.x,p1.y,p2.x,p2.y,p.x,p.y)
+        if val<-1e-9:
+            up.append(p)
+        if val>1e-9:
+            down.append(p)
+
+    def reccusion(p1, p2, ps):
+        if len(ps)==0:
+            return []
+
+        farthest=None
+        maxD=0
+        for p in ps:
+            d=abs(p-lineProject(p,p1,p2))
+            if d>maxD:
+                maxD=d
+                farthest=p
+
+        
+
+        l=[]
+        r=[]
+        for p in ps:
+            if p is farthest: 
+                continue
+            if orientation(p1.x,p1.y,farthest.x,farthest.y,p.x,p.y)<-1e-9:
+                l.append(p)
+            if orientation(farthest.x,farthest.y,p2.x,p2.y,p.x,p.y)<-1e-9:
+                r.append(p)
+        return reccusion(p1,farthest,l)+[farthest]+reccusion(farthest,p2,r)
+
+    upPath=reccusion(p1,p2,up)
+    upLength=pathLength([p1]+upPath+[p2])
+    downPath=reccusion(p2,p1,down)
+    downPath.reverse()
+    downLength=pathLength([p1]+downPath+[p2])
+
+    return upPath if upLength<downLength else downPath
+    
+    
+
+def pathLength(points):
+    d=0
+    for i in range(1,len(points)):
+        d+=points[i].dist(points[i-1])
+    return d
+
+
+
+def inBetweenGen(p1, p2, obstacles, force=0):
 
     if len(obstacles)==0:
         return []
 
 
-    dists=[(distPtoSegment(p,p1,p2),p,dot(p,p1,p2)) for obstacle in obstacles for p in obstacle.points]
-    dists.sort(key= lambda d_p: d_p[0])
-
-    work=[]
-    if dists[0][0]>0 or dists[len(dists)-1][0]<0:
+    points=[p for obstacle in obstacles for p in spread(obstacle,force)]
+    if len(points)<2:
         return []
-
-    if abs(dists[0][0])<abs(dists[len(dists)-1][0]):
-        for d,p,t in dists:
-            if d>0:
-                break
-            work.append((p,t))
-        
-    else:
-        for d,p,t in reversed(dists):
-            if d<0:
-                break
-            work.append((p,t))
-
-    #work is from large to small
-
-
-    def reccusion(l, r, w, limit):
-        # print(l, r, w)
-        if len(w)==0 or limit==0:
-            return []
-        p, t=w[0]
-
-        a=False
-        b=False
-        for ob in obstacles:
-            if a and b:
-                break
-            if not a:
-                a=ob.lineIntersect(Edge(l.x,l.y,p.x,p.y))
-            if not b:
-                b=ob.lineIntersect(Edge(p.x,p.y,r.x,r.y))
-
-        ans=[p]
-
-        
-        if a:
-            # print("l")
-            ans=reccusion(l,p,[d_p for d_p in w if d_p[1]<0 or d_p[1]<t],limit-1)+ans
-
-        if b:
-            # print("r")
-            ans+=reccusion(p,r,[d_p for d_p in w if d_p[1]>1 or d_p[1]>t],limit-1)
-        return ans
     
-    return reccusion(p1,p2,work,10)
+
+    return quickhull(p1,p2,points)
 
     
 
@@ -460,7 +500,7 @@ class Sensor:
             ts=[]
             p2=self.center+ray*self.r
             for se in segments:
-                t=se.rayIntersect(self.center,p2)
+                t=se[2].rayIntersect(self.center,p2)
                 ts.append(t)
             reduce=cost(self.center,p2,obstacles,ts)
             diviend=self.exposure(ray)

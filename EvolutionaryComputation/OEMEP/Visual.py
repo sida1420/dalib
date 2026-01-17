@@ -13,11 +13,11 @@ def drawObstacle(obstacles, fig, ax):
         ax.add_patch(polygon)
 
 def drawMap(map,fig, ax):
-    drawObstacle(map["obstacles"],fig,ax)
     for s in map["sensors"]:
         wedge=patches.Wedge(s[0].center(),s[0].r,s[0].thetaL(),s[0].thetaR(),alpha=0.5)
         plt.scatter(s[0].center.x, s[0].center.y, s=1)
         ax.add_patch(wedge)
+    drawObstacle(map["obstacles"],fig,ax)
     
     ax.autoscale()
     ax.set_aspect('equal')
@@ -41,7 +41,7 @@ def map(map):
     fig, ax = plt.subplots()
     drawMap(map,fig,ax)
 
-    plt.savefig("EvolutionaryComputation/OEMEP/map.jpeg")
+    plt.savefig("EvolutionaryComputation/OEMEP/map.svg")
     plt.show()
 import Evaluate
 
@@ -52,10 +52,14 @@ def mapPath(map,path):
 
     plt.show()
 
-def mapPaths(map,paths):
+def mapPaths(map,paths, show=True, save=None):
     fig, ax = plt.subplots()
     drawMap(map,fig,ax)
     for path in paths:
         drawPath(Evaluate.normalize(map,path))
 
-    plt.show()
+    # if save is not None:
+        # plt.savefig(f"EvolutionaryComputation/OEMEP/{save}")
+    if show:
+        plt.show()
+
