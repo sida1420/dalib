@@ -1,6 +1,8 @@
 import Classes as cl
 import matplotlib.pyplot as plt
 import Visual
+import multiprocessing as mp
+from functools import partial
 
 def normalize(map, ind):
     firstNor=[]
@@ -19,10 +21,13 @@ def normalize(map, ind):
     save=set()
     nothing=False
     iter=0
-    while not nothing:
-        print(iter)
+    max_iter=5
+    while not nothing and iter<max_iter:
+        # print(iter)
+        # print(save,"-", secondNor)
         nothing=True
         newNor=[]
+        force=2**(-iter)
         for i in range(len(secondNor)-1):
             newNor.append(secondNor[i])
             p1=secondNor[i]
@@ -33,22 +38,22 @@ def normalize(map, ind):
 
             for ob in map["obstacles"]:
                 if ob[1].lineIntersect(p1,p2):
-                    if ob[0].lineIntersect(cl.Edge(p1.x,p1.y,p2.x,p2.y)):
+                    if ob[0].lineIntersect(p1,p2):
                         obs.append(ob[0])
             if len(obs)==0:
                 save.add((p1,p2))
             else:
-                mid=cl.inBetweenGen(p1,p2,obs,0)
+                mid=cl.inBetweenGen(p1,p2,obs,force)
                 if not mid:
                     save.add((p1,p2))
                 else:
                     newNor+=mid
                     nothing=False
-        newNor.append(secondNor[len(secondNor)-1])
+        newNor.append(secondNor[-1])
         secondNor=newNor
         iter+=1
     # Visual.mapPath(map,secondNor)
-    print(iter)
+    # print(iter)
     return secondNor
 
 
@@ -56,17 +61,15 @@ def normalize(map, ind):
 def evaluate(map, inds):
     evas=[]
     paths=[]
-    for ind in inds:
-        # Visual.mapPath(map,ind)
-        path=normalize(map,ind)
-
+    with mp.Pool(processes=mp.cpu_count()) as pool:
+        # partial lets us pass the 'map' argument to every call
+        func = partial(normalize,map)
+        paths = pool.map(func, inds)
+    for path in paths:
         distance=0
         for i in range(len(path)-1):
-           p1=path[i]
-           p2=path[i+1]
-           distance+=p1.dist(p2)
+           distance+=path[i].dist(path[i+1])
         evas.append({"exposure":0,"distance":distance,"complexity":len(path)})
-        paths.append(path)
     for se in map["sensors"]:
         segs=[]
 
@@ -76,7 +79,7 @@ def evaluate(map, inds):
                 p1=path[j]
                 p2=path[j+1]
                 if se[1].lineIntersect(p1,p2):
-                    segs.append((i,j,cl.Edge(p1.x,p1.y,p2.x,p2.y)))
+                    segs.append((i,j,p1,p2))
         obs=[]
         for ob in map["obstacles"]:
             if se[1].intersect(ob[1]):
@@ -84,9 +87,6 @@ def evaluate(map, inds):
         costs=se[0].casting(obs,segs)
         for i in range(len(segs)):
             evas[segs[i][0]]["exposure"]+=costs[i]
-    # print(cost)
-    # print(distance)
-    # Visual.mapPath(map,path)
     return evas
 
 

@@ -8,7 +8,8 @@ def mutate(map, ind, chance):
     sensors=map["sensors"]
     chunks=map["chunks"]
 
-    for point in ind:
+    for i in range(1,len(ind)-1):
+        point=ind[i]
         if random.random()>chance:
             continue    
         idxs=chunks.getSensors(point)
@@ -24,7 +25,7 @@ def mutate(map, ind, chance):
         for se in workSes:
             change+=cl.sensorClipping(se,point)
         
-        change/=len(workSes)
+        # change/=len(workSes)
 
             
 
@@ -32,10 +33,10 @@ def mutate(map, ind, chance):
         point.y+=change.y
         if point.x<0:
             point.x=0
-        elif point.y<0:
-            point.y=0
-        if point.x>map["width"]:
+        elif point.x>map["width"]:
             point.x=map["width"]
+        if point.y<0:
+            point.y=0
         elif point.y>map["height"]:
             point.y=map["height"]
         

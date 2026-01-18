@@ -1,65 +1,70 @@
 import matplotlib.pyplot as plt
 import matplotlib.patches as patches
-def drawObstacle(obstacles, fig, ax):
-
-    for o in obstacles:
-        polygon = patches.Polygon(o[0].draw(), 
-                            closed=True, facecolor='darkgrey', 
-                                  edgecolor='black',
-                            linewidth=1,
-                            alpha=0.8)
-        
-        # 3. Add to the axis
-        ax.add_patch(polygon)
-
-def drawMap(map,fig, ax):
-    for s in map["sensors"]:
-        wedge=patches.Wedge(s[0].center(),s[0].r,s[0].thetaL(),s[0].thetaR(),alpha=0.5)
-        plt.scatter(s[0].center.x, s[0].center.y, s=1)
-        ax.add_patch(wedge)
-    drawObstacle(map["obstacles"],fig,ax)
-    
-    ax.autoscale()
-    ax.set_aspect('equal')
-    plt.scatter(map["start"].x, map["start"].y, s=50)
-    plt.scatter(map["goal"].x, map["goal"].y, s=50)
-
 import random
-
-def drawPath(path):
-    color=(random.random(),random.random(),random.random())
-    xs=[]
-    ys=[]
-    for i in range(len(path)):
-        xs.append(path[i].x)
-        ys.append(path[i].y)
-        plt.scatter(path[i].x, path[i].y, s=10,color=color)
-    plt.plot(xs,ys,linewidth=2,color=color)
-
-
-def map(map):
-    fig, ax = plt.subplots()
-    drawMap(map,fig,ax)
-
-    plt.savefig("EvolutionaryComputation/OEMEP/map.svg")
-    plt.show()
 import Evaluate
 
-def mapPath(map,path):
-    fig, ax = plt.subplots()
-    drawMap(map,fig,ax)
-    drawPath(Evaluate.normalize(map,path))
+class MapVisualizer:
+    def __init__(self, map_data):
+        self.map_data = map_data
+        self.fig, self.ax = plt.subplots(figsize=(8, 8))
+        self.path_artists = [] # To keep track of drawn paths for easy clearing
+        
+        # Draw the "Static" map once during initialization
+        self._draw_static_map()
+        
+    def _draw_static_map(self):
+        # 1. Draw Sensors
+        for s in self.map_data["sensors"]:
+            wedge = patches.Wedge(s[0].center(), s[0].r, s[0].thetaL(), s[0].thetaR(), 
+                                  alpha=0.3, facecolor='blue', edgecolor='none')
+            self.ax.add_patch(wedge)
+            self.ax.scatter(s[0].center.x, s[0].center.y, s=1, color='orange')
 
-    plt.show()
+        # 2. Draw Obstacles
+        for o in self.map_data["obstacles"]:
+            poly = patches.Polygon(o[0].draw(), closed=True, 
+                                   facecolor='darkgrey', edgecolor='black', alpha=0.8)
+            self.ax.add_patch(poly)
 
-def mapPaths(map,paths, show=True, save=None):
-    fig, ax = plt.subplots()
-    drawMap(map,fig,ax)
-    for path in paths:
-        drawPath(Evaluate.normalize(map,path))
+        # 3. Draw Start and Goal
+        self.ax.scatter(self.map_data["start"].x, self.map_data["start"].y, 
+                        s=100, color='green', marker='P', label='Start')
+        self.ax.scatter(self.map_data["goal"].x, self.map_data["goal"].y, 
+                        s=100, color='red', marker='X', label='Goal')
+        
+        self.ax.set_aspect('equal')
+        self.ax.autoscale()
+        self.ax.set_title("Evolutionary Path Planning")
 
-    # if save is not None:
-        # plt.savefig(f"EvolutionaryComputation/OEMEP/{save}")
-    if show:
+    def clear_paths(self):
+        """Removes only the path lines from the axis."""
+        for artist in self.path_artists:
+            artist.remove()
+        self.path_artists = []
+
+    def draw_paths(self, paths, use_normalization=True):
+        """Draws new paths on the existing stored map."""
+        for path in paths:
+            # Only normalize if necessary (it's a heavy operation)
+            display_path = Evaluate.normalize(self.map_data, path) if use_normalization else path
+            
+            color = (random.random(), random.random(), random.random())
+            xs = [p.x for p in display_path]
+            ys = [p.y for p in display_path]
+            
+            # Draw line and store the artist
+            line, = self.ax.plot(xs, ys, linewidth=2, color=color, alpha=0.7)
+            # Draw points and store the artist
+            scat = self.ax.scatter(xs, ys, s=10, color=color)
+            
+            self.path_artists.extend([line, scat])
+        
+        # Refresh the canvas
+        self.fig.canvas.draw_idle()
+        plt.pause(0.1) # Small pause to allow the UI to update
+
+    def show(self):
         plt.show()
 
+    def save(self, filename):
+        self.fig.savefig(f"EvolutionaryComputation/OEMEP/{filename}")

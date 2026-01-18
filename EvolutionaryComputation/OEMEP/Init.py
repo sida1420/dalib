@@ -2,7 +2,7 @@ import Classes as cl
 import random
 import math
 def init(w,h,start, goal):
-    r=w/20
+    r=w/10
 
     points=[start]
 

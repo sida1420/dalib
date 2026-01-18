@@ -1,6 +1,11 @@
 import math
 import random
 class Point:
+    __slots__ = ['x', 'y']
+    def __getstate__(self):
+        return (self.x, self.y)
+    def __setstate__(self, state):
+        self.x, self.y = state
     def __init__(self,x,y):
         self.x=x
         self.y=y
@@ -46,6 +51,11 @@ def onSegment(x1,y1,x2,y2,x3,y3):
     return False
 
 class Edge:
+    __slots__ = ['x1', 'y1', 'x2', 'y2']
+    def __getstate__(self):
+        return (self.x1, self.y1, self.x2, self.y2)
+    def __setstate__(self, state):
+        self.x1, self.y1, self.x2,self.y2 = state
     def __init__(self,x1,y1,x2,y2):
         self.x1=x1
         self.x2=x2
@@ -68,19 +78,37 @@ class Edge:
 
 
         return abc*abd<0 and cda*cdb<0
-
     def rayIntersect(self, p1, p2):
-        a=Point(self.x1,self.y1)
-        b=Point(self.x2,self.y2)
-        r = p2 - p1
-        s = b - a
-        down=(p2-p1).cross(b-a)
-        if down==0:
+        # Extract coordinates to avoid object creation overhead
+        p1x, p1y = p1.x, p1.y
+        # p2 is the end of the ray, p1 is the origin
+        
+        # Vector r = p2 - p1
+        rx = p2.x - p1x
+        ry = p2.y - p1y
+        
+        # Vector s = (x2-x1, y2-y1)
+        sx = self.x2 - self.x1
+        sy = self.y2 - self.y1
+
+        # Cross product of r and s
+        down = rx * sy - ry * sx
+        
+        # Parallel lines check
+        if abs(down) < 1e-9:
             return None
 
-        t = (a - p1).cross(s) / down
-        u = (a - p1).cross(r) / down
+        # Vector (self.p1 - p1)
+        dx = self.x1 - p1x
+        dy = self.y1 - p1y
 
+        # t = (q - p) x s / (r x s)
+        t = (dx * sy - dy * sx) / down
+        
+        # u = (q - p) x r / (r x s)
+        u = (dx * ry - dy * rx) / down
+
+        # Standard intersection checks
         if t <= 0 or t >= 1:
             return None
         if u < 0 or u > 1:
@@ -127,7 +155,7 @@ def intersection(p, e):
 
     return Point(p1.x+t*(p2.x-p1.x),p1.y)
 
-
+import Helper
 
 class Obstacle:
     def __init__(self, w=None, h=None, points=None, coeff=None, sorted=True):
@@ -234,23 +262,45 @@ class Obstacle:
                 left+=1
         return right%2==1 and left%2==1
 
-    def lineIntersect(self, e):
-        if self.pointIntersect(Point(e.x1,e.y1)) or self.pointIntersect(Point(e.x2,e.y2)):
+    def lineIntersect(self, p1, p2):
+        if self.pointIntersect(p1) or self.pointIntersect(p2):
             return True
-        for i in range(len(self.points)):
-            edge=Edge(self.points[i].x,self.points[i].y,self.points[(i+1)%len(self.points)].x,self.points[(i+1)%len(self.points)].y)
-            if edge.same(e):
-                continue
-            if e.intersect(edge):
+
+        n = len(self.points)
+        for i in range(n):
+            a = self.points[i]
+            b = self.points[(i+1)%n]
+            if Helper.fast_lines_intersect(p1.x, p1.y, p2.x, p2.y, a.x, a.y, b.x, b.y):
                 return True
         return False
 
     def rayIntersect(self, p1, p2):
-        ts=[]
-        for i in range(len(self.points)):
-            edge=Edge(self.points[i].x,self.points[i].y,self.points[(i+1)%len(self.points)].x,self.points[(i+1)%len(self.points)].y)
-            t=edge.rayIntersect(p1,p2)
-            if t is not None:
+        ts = []
+        n = len(self.points)
+        
+        # Pre-calculate Ray Vector (optimization)
+        rx = p2.x - p1.x
+        ry = p2.y - p1.y
+        p1x, p1y = p1.x, p1.y
+
+        for i in range(n):
+            a = self.points[i]
+            b = self.points[(i+1) % n]
+            
+            sx = b.x - a.x
+            sy = b.y - a.y
+            
+            down = rx * sy - ry * sx
+            if abs(down) < 1e-9:
+                continue
+
+            dx = a.x - p1x
+            dy = a.y - p1y
+
+            t = (dx * sy - dy * sx) / down
+            u = (dx * ry - dy * rx) / down
+
+            if 0 < t < 1 and 0 <= u <= 1:
                 ts.append(t)
         ts.sort()
         ans=[]
@@ -429,13 +479,6 @@ def inBetweenGen(p1, p2, obstacles, force=0):
 
     return quickhull(p1,p2,points)
 
-    
-
-
-
-        
-
-
 
 
 class Triangle(Obstacle):
@@ -475,39 +518,57 @@ class Sensor:
         rm=rotate(self.dir,-self.angle/2)*self.r+self.center
         return orientation(lm.x,lm.y,self.center.x,self.center.y,point.x,point.y)<0 and orientation(rm.x,rm.y,self.center.x,self.center.y,point.x,point.y)>0
 
-    def casting(self, obstacles, segments):
-        #10 degree each
-        theta=math.pi/18
-        lines=int(self.angle/theta)
-        n=len(segments)
-        costs=[0 for i in range(n)]
-        rays=[]
-        if lines%2==1:
-            rays.append(self.dir)
-        lines-=1
 
-        l=rotate(self.dir,-self.angle/2)
-        r=rotate(self.dir,self.angle/2)
-        while lines>0:
-            rays+=[l,r]
-            # print(l,r)
-            lines-=2
-            l=rotate(l,theta)
-            r=rotate(r,-theta)
+
+    def casting(self, obstacles, segments):
+        # segments is now a list of tuples: (index, sub_index, p1, p2)
         
+        theta = math.pi/18
+        lines = int(self.angle/theta)
+        n = len(segments)
+        costs = [0.0] * n # Use float array
+        
+        rays = []
+        if lines % 2 == 1:
+            rays.append(self.dir)
+        lines -= 1
+
+        l = rotate(self.dir, -self.angle/2)
+        r = rotate(self.dir, self.angle/2)
+        while lines > 0:
+            rays.extend([l, r])
+            lines -= 2
+            l = rotate(l, theta)
+            r = rotate(r, -theta)
+        
+        cx, cy = self.center.x, self.center.y # Cache center
         
         for ray in rays:
-            ts=[]
-            p2=self.center+ray*self.r
+            # Pre-calc ray endpoint and vector
+            p2 = self.center + ray * self.r
+            rdx = p2.x - cx
+            rdy = p2.y - cy
+            
+            ts = []
+            
+            # OPTIMIZED LOOP: No object creation, pure math
             for se in segments:
-                t=se[2].rayIntersect(self.center,p2)
+                # se[2] is p1, se[3] is p2
+                t = Helper.fast_ray_segment_intersect(cx, cy, rdx, rdy, se[2].x, se[2].y, se[3].x, se[3].y)
                 ts.append(t)
-            reduce=cost(self.center,p2,obstacles,ts)
-            diviend=self.exposure(ray)
+            
+            reduce = cost(self.center, p2, obstacles, ts)
+            diviend = self.exposure(ray)
+            
+            # Apply costs
             for i in range(n):
                 if ts[i] is None:
                     continue
-                costs[i]+=max(0,(1-reduce[i]))*diviend/abs(ray*ts[i])
+                # Inline distance check (optional, but faster)
+                dist_sq = (ray.x*ts[i])**2 + (ray.y*ts[i])**2 
+                if dist_sq > 0:
+                    c = max(0, (1 - reduce[i])) * diviend / math.sqrt(dist_sq)
+                    costs[i] += c
 
         return costs
 
