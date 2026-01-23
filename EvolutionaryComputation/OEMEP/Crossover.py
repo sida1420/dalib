@@ -1,4 +1,5 @@
 import random
+import copy
 def solo(i, j,level, crowding):
         if level[i]==level[j]:
             return i if crowding[i]>crowding[j] else j
@@ -8,7 +9,9 @@ def pathConnect(ind1, ind2):
     i=random.randint(0,len(ind1)-2)
     j=random.randint(1,len(ind2)-1)
 
-    return ind1[0:i+1]+ind2[j:len(ind2)]
+    rawPath= ind1[0:i+1]+ind2[j:len(ind2)]
+    # return copy.deepcopy(rawPath)
+    return [p.copy() for p in rawPath]
 
 import Mutate
 def crossover(map,inds,evaluations,popuSize,level, crowding):

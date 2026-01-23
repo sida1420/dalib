@@ -76,7 +76,7 @@ def gen(w, h, obstacleCount, sensorCount):
 
     return {"width":w,"height":h,"obstacles":obstacles,"sensors":sensors, "chunks":chunks,"start":start,"goal":goal}
 import pickle
-map=gen(100,100,20,200)
+map=gen(100,100,20,100)
 
 vis=Visual.MapVisualizer(map)
 vis.save("map.svg")

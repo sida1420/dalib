@@ -21,9 +21,10 @@ def run():
     population=[Init.init(width,height,start,goal) for i in range(popuSize)]
     eva=Evaluate.evaluate(map,population)
 
-    limit=100
+    limit=50
     gensCount=0
     freq=1
+
 
     while gensCount<limit:
         gensCount+=1
@@ -48,6 +49,8 @@ def run():
         normalize_time=time.perf_counter()
 
         population, eva, level, crowding=Selection.selection(population,eva,popuSize)
+        if gensCount==limit:
+            Visual.fronts(population,level,eva)
         selection_time=time.perf_counter()
         # print("b")
 

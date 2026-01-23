@@ -1,6 +1,22 @@
 import Classes as cl
 import random
 import Chunking
+
+def sensorsPush(workSes, point):
+
+    change=cl.Point(0,0)
+    for se in workSes:
+        change+=cl.sensorClipping(se,point)
+    
+        
+    point+=change
+    return point
+def randomJitter(w, point):
+    r=w/20
+    change=cl.Point(random.uniform(-r,r),random.uniform(-r,r))
+    point+=change
+    return point
+
 def mutate(map, ind, chance):
     w=map["width"]
     h=map["height"]
@@ -14,23 +30,14 @@ def mutate(map, ind, chance):
             continue    
         idxs=chunks.getSensors(point)
         workSes=[]
-        for i in idxs:
-            if sensors[i][1].intersect(point):
-                if sensors[i][0].intersect(point):
-                    workSes.append(sensors[i][0])
+        for j in idxs:
+            if sensors[j][1].intersect(point):
+                if sensors[j][0].intersect(point):
+                    workSes.append(sensors[j][0])
         if len(workSes)==0:
-            continue
-        change=cl.Point(0,0)
-
-        for se in workSes:
-            change+=cl.sensorClipping(se,point)
-        
-        # change/=len(workSes)
-
-            
-
-        point.x+=change.x
-        point.y+=change.y
+            point=randomJitter(w,point)
+        else:
+            point=sensorsPush(workSes,point)
         if point.x<0:
             point.x=0
         elif point.x>map["width"]:
@@ -39,5 +46,7 @@ def mutate(map, ind, chance):
             point.y=0
         elif point.y>map["height"]:
             point.y=map["height"]
+        ind[i]=point
+    
         
 

@@ -56,38 +56,70 @@ def normalize(map, ind):
     # print(iter)
     return secondNor
 
-
+from collections import defaultdict
 
 def evaluate(map, inds):
     evas=[]
     paths=[]
+    chunks=map["chunks"]
+    sensors=map["sensors"]
     with mp.Pool(processes=mp.cpu_count()) as pool:
         # partial lets us pass the 'map' argument to every call
         func = partial(normalize,map)
         paths = pool.map(func, inds)
-    for path in paths:
+    ses=defaultdict(list)
+    for j in range(len(paths)):
+        path=paths[j]
         distance=0
         for i in range(len(path)-1):
-           distance+=path[i].dist(path[i+1])
-        evas.append({"exposure":0,"distance":distance,"complexity":len(path)})
-    for se in map["sensors"]:
-        segs=[]
+            distance+=path[i].dist(path[i+1])
+            tSes=chunks.rayCasting(path[i],path[i+1])
+            for seIdx in tSes:
+                if sensors[seIdx][1].lineIntersect(path[i],path[i+1]):
+                    ses[seIdx].append((j,i,path[i],path[i+1]))
 
-        for i in range(len(paths)):
-            path=paths[i]
-            for j in range(len(path)-1):    
-                p1=path[j]
-                p2=path[j+1]
-                if se[1].lineIntersect(p1,p2):
-                    segs.append((i,j,p1,p2))
+        evas.append({"exposure":0,"distance":distance,"complexity":len(path)})
+
+    for seIdx, segs in ses.items():
         obs=[]
         for ob in map["obstacles"]:
-            if se[1].intersect(ob[1]):
+            if sensors[seIdx][1].intersect(ob[1]):
                 obs.append(ob[0])
-        costs=se[0].casting(obs,segs)
+        costs=sensors[seIdx][0].casting(obs,segs)
         for i in range(len(segs)):
             evas[segs[i][0]]["exposure"]+=costs[i]
     return evas
+
+# def evaluate(map, inds):
+#     evas=[]
+#     paths=[]
+#     with mp.Pool(processes=mp.cpu_count()) as pool:
+#         # partial lets us pass the 'map' argument to every call
+#         func = partial(normalize,map)
+#         paths = pool.map(func, inds)
+#     for path in paths:
+#         distance=0
+#         for i in range(len(path)-1):
+#            distance+=path[i].dist(path[i+1])
+#         evas.append({"exposure":0,"distance":distance,"complexity":len(path)})
+#     for se in map["sensors"]:
+#         segs=[]
+
+#         for i in range(len(paths)):
+#             path=paths[i]
+#             for j in range(len(path)-1):    
+#                 p1=path[j]
+#                 p2=path[j+1]
+#                 if se[1].lineIntersect(p1,p2):
+#                     segs.append((i,j,p1,p2))
+#         obs=[]
+#         for ob in map["obstacles"]:
+#             if se[1].intersect(ob[1]):
+#                 obs.append(ob[0])
+#         costs=se[0].casting(obs,segs)
+#         for i in range(len(segs)):
+#             evas[segs[i][0]]["exposure"]+=costs[i]
+#     return evas
 
 
 

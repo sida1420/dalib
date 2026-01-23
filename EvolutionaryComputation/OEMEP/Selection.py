@@ -3,7 +3,7 @@ objectiveCount=("exposure","distance")
 
 def dominate(eva1, eva2):
     count=0
-    for key in eva1:
+    for key in objectiveCount:
         if eva1[key]>eva2[key]:
             return False
         if eva1[key]<eva2[key]:

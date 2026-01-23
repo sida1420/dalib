@@ -68,3 +68,39 @@ class MapVisualizer:
 
     def save(self, filename):
         self.fig.savefig(f"EvolutionaryComputation/OEMEP/{filename}")
+from collections import defaultdict
+import numpy as np
+
+def fronts(inds, level, evas):
+    fig, ax = plt.subplots(figsize=(8, 6))
+    fs = defaultdict(list)
+    
+    for i in range(len(inds)):
+        fs[level[i]].append(i)
+    
+    # Sort levels to plot them in order
+    for lvl in sorted(fs.keys()):
+        idxes = fs[lvl]
+        
+        # Unique color for each rank
+        color = plt.cm.viridis(lvl / (max(fs.keys()) + 1)) 
+        
+        x = [evas[i]["exposure"] for i in idxes]
+        y = [evas[i]["distance"] for i in idxes]
+        
+        # ADD JITTER: This allows you to see "clones" as a small cluster
+        # instead of a single point.
+        jitter_x = np.random.normal(0, 0.005 * (max(x) - min(x) + 0.1), size=len(x))
+        jitter_y = np.random.normal(0, 0.005 * (max(y) - min(y) + 0.1), size=len(y))
+
+        ax.scatter(np.array(x) + jitter_x, 
+                   np.array(y) + jitter_y, 
+                   s=30, color=color, alpha=0.7, edgecolors='none', 
+                   label=f'Rank {lvl}')
+        
+    ax.set_xlabel("Exposure (Minimize)")
+    ax.set_ylabel("Distance (Minimize)")
+    ax.legend()
+    plt.grid(True, linestyle='--', alpha=0.5)
+    fig.savefig(f"EvolutionaryComputation/OEMEP/Result.svg")
+
