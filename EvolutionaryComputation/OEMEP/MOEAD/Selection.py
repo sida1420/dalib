@@ -64,7 +64,7 @@ def selection(weights, population, evas, offsprings, offspringEva, neighbours, g
             if offspringGbip<neighGbip:
                 replaceCount+=1
                 #replace
-                population[indIdx]=offsprings[i]
+                population[indIdx]=[p.copy() for p in offsprings[i]]
                 evas[indIdx]=offspringEva[i]
                 gbips[indIdx]=offspringGbip
 

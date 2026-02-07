@@ -49,5 +49,5 @@ def mutate(map, ind, chance):
             point.y=map["height"]
         ind[i]=point
     
-        
+    return ind
 

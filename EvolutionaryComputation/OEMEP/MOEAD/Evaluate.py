@@ -120,6 +120,11 @@ def evaluate(map, inds):
 #         for i in range(len(segs)):
 #             evas[segs[i][0]]["exposure"]+=costs[i]
 #     return evas
+
+
+
+
+
 from Vector import Vector
 def gbip(weight, eva, reference, penalty, objectives):
     vEva=Vector([eva[obj] for obj in objectives])
@@ -138,10 +143,6 @@ def updateRef(evas, reference,objectives):
             reference.vals[i]=min(reference.vals[i],eva[obj])
     return reference
     
-
-
-
-
 
 
 

@@ -60,7 +60,7 @@ def run():
             vis.save(f"Generations/gen{gensCount}.svg")
 
         normalize_time=time.perf_counter()
-        referencePoint=Evaluate.updateRef(eva,referencePoint,objectives)
+        referencePoint=Evaluate.updateRef(offspringEva,referencePoint,objectives)
         EP, EPEva=Selection.updateEP(offsprings,offspringEva, EP, EPEva, objectives)
         population, eva, gbips=Selection.selection(weightVectors,population,eva,offsprings,offspringEva,neighbours,gbips,popuSize,objectives,referencePoint, 3)
         if gensCount==limit:

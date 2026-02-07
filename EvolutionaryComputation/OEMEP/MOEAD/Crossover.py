@@ -21,7 +21,7 @@ def crossover(map, population,neighbours,popuSize):
         child=pathConnect(population[neighbours[idx][p1]],population[neighbours[idx][p2]])
 
         if random.random()<0.5:
-            Mutate.mutate(map,child,0.1)
+            child=Mutate.mutate(map,child,0.1)
 
         offsprings.append(child)
     return offsprings
