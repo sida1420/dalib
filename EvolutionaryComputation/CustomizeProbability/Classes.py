@@ -41,3 +41,10 @@ class Point:
         return hash((self.x, self.y))
     def copy(self):
         return Point(self.x,self.y)
+
+def repair(ind):
+    for i in range(len(ind)):
+        ind[i]=max(0,min(ind[i],1))
+    return ind
+
+

@@ -1,10 +1,24 @@
 import Evaluate
 import matplotlib.pyplot as plt
 import random
+def color_from_pointer(ptr):
+    x = ptr
+
+    x ^= x >> 16
+    x *= 0x7feb352d
+    x ^= x >> 15
+    x *= 0x846ca68b
+    x ^= x >> 16
+
+    r = ((x >> 0) & 0xFF) / 255
+    g = ((x >> 8) & 0xFF) / 255
+    b = ((x >> 16) & 0xFF) / 255
+
+    return (r, g, b)
 def distribution(population, target):
     plt.clf()
 
-    nor_population=population
+    nor_population=[Evaluate.normalize(ind) for ind in population]
 
     
     distributed_population=[Evaluate.probabilize(ind,1000,50) for ind in nor_population]
@@ -12,13 +26,13 @@ def distribution(population, target):
     avg_population=[Evaluate.averagilize(ind) for ind in distributed_population]
 
 
-    for bins in avg_population:
+    for i,bins in enumerate(avg_population):
         step=1/len(bins)
         xs=[step*(i+0.5) for i in range(len(bins))]
         ys=[height for height in bins]
-        color=(random.random(),random.random(),random.random())
+        # color=(random.random(),random.random(),random.random())
 
-        plt.plot(xs, ys, 'k-', color=color)
+        plt.plot(xs, ys, 'k-', color=color_from_pointer(id(population[i])))
 
     ys=Evaluate.averagilize([p.y for p in target])
     for i in range(len(target)):
@@ -27,19 +41,29 @@ def distribution(population, target):
 
     plt.pause(0.01)
 
+from Classes import Operation
 def distribution_ind(ind):
-    nor=ind
+    if Evaluate.fatal_error(ind, 100)>=0.1:
+        return
+    nor=Evaluate.normalize(ind)
 
     step=1/1000
-    samples=[Evaluate.func(nor, step*i) for i in range(1000)]
+    samples=[]
+    for i in range(1000):
+        t=nor(step*i)
+        if t is None:
+            continue
+        samples.append(t)
     
     color=(random.random(),random.random(),random.random())
 
     plt.hist(samples, bins=50, color=color)
     plt.show()
 
-
-# distribution_ind([-1.2114877048083406, -0.8240017254663194, -0.19697885336115492, 1.1599415312466437, -0.15524190492195356, 0.09697353658277041])
+# string="[^ [^ x [exp [^ [^ x [exp 0.67]] [exp x]]]] [exp x]]"
+# strnig2="[^ [^ x [exp [^ [^ x [exp 0.67]] [exp x]]]] [exp x]]"
+# distribution_ind(distribution_ind(Operation.parsing(string)))
+# distribution_ind(distribution_ind(Operation.parsing(strnig2)))
 
 from collections import defaultdict
 import numpy as np

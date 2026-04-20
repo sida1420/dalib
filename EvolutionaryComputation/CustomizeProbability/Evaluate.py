@@ -1,16 +1,47 @@
 import random
 import math
+
+combinations=None
+permutations=None
+
+def precompute(n):
+    global combinations, permutations
+    permutations=[0]*(n+1)
+    permutations[0]=1
+
+    for i in range(1,n+1):
+        permutations[i]=i*permutations[i-1]
+
+    combinations=[list()]*(n+1)
+
+    for i in range(0,n+1):
+        combinations[i]=[0]*(i+1)
+        for j in range(0,i+1):
+            combinations[i][j]=permutations[i]/(permutations[j]*permutations[i-j])
+# 0.3, 0.5, 0.1 len=3
+# 0,   1,    2
+
+# c[1]*0.3*x**1*(1-x)**(4-1)
+
+
+
 def func(ind, x):
-    ans=0
+    
+    n=len(ind)+1
+    ans=(x**n)
+    #1, 2, 3,.., n-1
     for i in range(len(ind)):
-        ans+=ind[i]*(x**(i+1))
+        k=i+1
+        ans+=combinations[n][k]*ind[i]*(x**k)*((1-x)**(n-k))
+    
     return ans
 
 #linear change find ax+b to make f(1)+a*1+b=1
-def normalize(ind):
-    y1=func(ind,1)
-    ind[0]+=1-y1
-    return ind
+# def normalize(ind):
+#     nor_ind=ind.copy()
+#     y1=func(nor_ind,1)
+#     nor_ind[0]+=1-y1
+#     return nor_ind
 
 
 def probabilize(ind, sample_size, num_bins):
@@ -64,13 +95,10 @@ def different(bins, target):
     return mse
 
 def complexity(ind):
-    ans=0
+    return len(ind)
 
-    for i in range(len(ind)):
-        if abs(ind[i])>1e-6:
-            ans+=abs(ind[i])*(i+1)
-    return ans/(len(ind))*2
 
+#likely wrong
 def steepness(bins):
     
     diffs=[(bins[i]-bins[i-1])**2 for i in range(1, len(bins))]
@@ -93,30 +121,25 @@ def error(ind, num_divisions):
 
         if cur<pre:
             ans+=abs(cur-pre)
-
+        pre=cur
 
     return ans/num_divisions
 
 
 def evaluate(population, target):
-    nor_population=[normalize(ind) for ind in population]
-    distributed_population=[]
-    errors=[]
-    for ind in nor_population:
-        distributed_ind=probabilize(ind,1000,50)
-        distributed_population.append(distributed_ind)
-        errors.append(error(ind,50))
+    nor_population=population
+    distributed_population=[probabilize(ind,1000,50) for ind in nor_population]
 
     evas=[]
 
     for i in range(len(population)):
-        eva={"different":different(distributed_population[i],target), "complexity":complexity(nor_population[i]), "steepness":steepness(distributed_population[i]), "errors": errors[i]}
+        eva={"different":different(distributed_population[i],target), "complexity":complexity(nor_population[i]), "steepness":steepness(distributed_population[i]), "errors": error(nor_population[i],100)}
         evas.append(eva)
 
     return evas
 
-target=[Point(0,0.5),Point(0.5,0.5),Point(0.6,0.5),Point(1,0.5)]
-print(evaluate([[1,0,0,0,0,0,0,0,0,0],],target))
+# target=[Point(0,0.5),Point(0.5,0.5),Point(0.6,0.5),Point(1,0.5)]
+# print(evaluate([[1,0,0,0,0,0,0,0,0,0],],target))
 
 from Vector import Vector
 def gbip(weight, eva, reference, penalty, objectives):

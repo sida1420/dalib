@@ -9,18 +9,18 @@ from Classes import Point
 import Evaluate
 import Visual
 import MakeTarget
-objectives=("different","errors","steepness","complexity")
+objectives=("errors","complexity","gradient_error","different")
 
 
 def run():
     #hyper parameters
 
-    num_divisions=3
+    num_divisions=5
     num_objectives=4
-    max_complexity=10
+    max_complexity=30
     num_neighbours=5
     replace_limit=3
-    iter_limit=1000
+    iter_limit=10000
     
     #Initilize
     target=MakeTarget.connect(MakeTarget.clamp([Point(0,0.5),Point(1280,0.95),Point(2048,1),Point(2816,0.95),Point(4096,0.5),Point(5888,0.1),Point(9000,0.01)]))
@@ -28,10 +28,7 @@ def run():
     weights=Init.init_weight_vectors(num_divisions,num_objectives)
 
     popu_size=len(weights)
-
-    Evaluate.precompute(max_complexity+1)
-
-    population=[Init.init(max_complexity) for i in range(popu_size)]
+    population=[Init.init(15) for i in range(popu_size)]
     neighbours=[Init.who_am_i_neighbour(i,weights,num_neighbours) for i in range(popu_size)]
     evas=Evaluate.evaluate(population,target)
 
@@ -48,7 +45,7 @@ def run():
     iter_count=0
     while(iter_count<iter_limit):
         iter_count+=1
-        print(iter_count)
+        print(f"\t GEN: {iter_count}")
 
         reference=Evaluate.update_ref(offspring_evas,reference,objectives)
         EP, EP_eva=Selection.update_EP(offsprings,offspring_evas,EP,EP_eva,objectives)
@@ -61,8 +58,10 @@ def run():
         print(reference)
         print(population[0])
         print(offsprings[0])
+        temp=""
         for key, value in evas[0].items():
-            print(f"{key}: {round(value,2)}")
+            temp+=f"{key}: {round(value,2)} "
+        print(temp)
 
     Visual.fronts(EP, EP_eva)
     for i in range(len(EP)):

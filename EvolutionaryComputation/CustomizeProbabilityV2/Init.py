@@ -1,9 +1,38 @@
 
 import random
 from Vector import Vector
+from Classes import Operation
+import Classes
 def init(n):
-    return [random.uniform(0,1) for i in range(n)]
+    one=list(Classes.one)
+    two=list(Classes.two)
+    choices=len(two)+len(one)
 
+    def recursion(k):
+        if k<=1:
+            if random.random()<0.5:
+                return Operation(None,value=random.uniform(-1,1))
+            else:
+                return Operation(None)
+        if k==2:
+            i=random.randint(0,len(one)-1)
+            operator=one[i]
+            return Operation(operator,[recursion(k-1)])
+
+        i=random.randint(0,choices-1)
+        
+        if i<len(one):
+            operator=one[i]
+            return Operation(operator,[recursion(k-1)])
+        else:
+            i-=len(one)
+            operator=two[i]
+            k-=1
+            split=random.randint(1,k-1)
+
+            return Operation(operator, [recursion(split),recursion(k-split)])
+        
+    return recursion(n)
 
 
 def init_weight_vectors(num_divisions, num_objectives):
