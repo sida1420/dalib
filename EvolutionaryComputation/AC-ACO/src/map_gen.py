@@ -34,7 +34,7 @@ import pickle
 import visual
 def new_map():
 
-    map_=gen(250,250,200,0.6,20,num_cluster_points=3)
+    map_=gen(250,250,200,0.6,100,num_cluster_points=3)
     visual.MapView(map_["width"],map_["height"],map_["base_pos"],map_["nodes"])
     with open("map.pkl", "wb") as file:
         pickle.dump(map_,file)

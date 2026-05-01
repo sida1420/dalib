@@ -10,10 +10,13 @@ def network_config(nodes, CHs, R_max, base_pos, hopping_factor, base_dists, dist
     CHs_lookup=set(CHs)
     CHs_mapping={node.idx:i for i, node in enumerate(CH_nodes)}
     for i, node in enumerate(nodes):
-        if i in CHs_lookup:
+        if i in CHs_lookup or residual_e[i]<=0:
             continue
         best,_=tree.nearest(nodes,i,None,1e9)
+        
         idx=CHs_mapping[best]
+        if dist_matrix[best][i]>R_max:
+            return None
         node_node=Node(i)
         CH_nodes[idx].branches.append(node_node)
         node_node.set_parent(idx)
@@ -30,9 +33,10 @@ def network_config(nodes, CHs, R_max, base_pos, hopping_factor, base_dists, dist
             candidates=[cnode for cnode in CH_nodes if cnode.idx!=node.idx and dist_matrix[node.idx][cnode.idx]<R_max and dist>base_dists[cnode.idx]]
 
             if len(candidates)==0:
-                base.branches.append(node)
-                node.set_parent(base.idx)
-                continue
+                return None
+                # base.branches.append(node)
+                # node.set_parent(base.idx)
+                # continue
 
             sum_candidates_e=sum([residual_e[cnode.idx] for cnode in candidates])
 
@@ -74,15 +78,14 @@ def E_m(E_elec, free_space_coeff, E_agg, multipath_coeff, single_node_bit, recei
 
 from collections import deque
 
-def energy_consumption(nodes, CHs,R_max, d0, base_pos, bit_count, hopping_factor, base_dists, dist_matrix, residual_e, E_elec, E_agg, free_space_coeff, multipath_coeff):
-    net=network_config(nodes,CHs, R_max, base_pos, hopping_factor, base_dists, dist_matrix, residual_e)
+def energy_consumption(nodes, net, d0, bit_count, base_dists, dist_matrix, E_elec, E_agg, free_space_coeff, multipath_coeff):
 
 
     qu=deque([net])
 
     topology_net=[]
 
-    while not qu.empty():
+    while qu:
         top=qu.popleft()
 
         topology_net.append(top)

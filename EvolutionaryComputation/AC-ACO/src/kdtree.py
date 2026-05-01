@@ -11,7 +11,7 @@ class KDTree:
         low=points_sc[:mid]
         high=points_sc[mid+1:]
         low_ha=set(low)
-        print(low, self.point, high)
+        # print(low, self.point, high)
 
         if len(low)>0:
             self.low=KDTree(not split_x, [p for p in points_so if p in low_ha], low)
@@ -19,7 +19,7 @@ class KDTree:
             self.high=KDTree(not split_x, [p for p in points_so if p not in low_ha and p!=self.point], high)
 
     def nearest(self, nodes, target, best, best_dist, farthest_prune=None):
-        print("-----")
+        # print("-----")
 
         dist=abs(nodes[target]-nodes[self.point])
         

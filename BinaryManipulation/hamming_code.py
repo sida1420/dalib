@@ -41,7 +41,5 @@ def hamming_code(data):
         # print((pad+len(data))*8-j)
 
     return encrypted_data
-
-print(ascii_to_bytes('hello'))
-print(hamming_code(ascii_to_bytes('hello')))
-#output: 00000000 01100110
+from noise import rand_noise
+print(rand_noise(hamming_code(ascii_to_bytes('i bet you cant')),0.05))
