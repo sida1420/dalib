@@ -1,16 +1,14 @@
 
 
 import heapq
-import Init
-import Selection
-import Crossover
+import init
+import selection
+import crossover
 import time
-from Classes import Point
-from Classes import Layout
-import Evaluate
+from classes import Point
+from classes import Layout
+import evaluate
 import json
-# import Visual
-# import MakeTarget
 target_metrics={}
 with open('config/target_metrics.json') as file:
     target_metrics=json.load(file)
@@ -29,23 +27,23 @@ def run():
     #Initilize
     layout=Layout()
     # print("a")
-    weights=Init.init_weight_vectors(num_divisions,num_objectives)
+    weights=init.init_weight_vectors(num_divisions,num_objectives)
 
     popu_size=len(weights)
     print(popu_size)
-    population=[Init.init(layout) for i in range(popu_size)]
+    population=[init.init(layout) for i in range(popu_size)]
     # print("c")
-    neighbours=[Init.who_am_i_neighbour(i,weights,num_neighbours) for i in range(popu_size)]
+    neighbours=[init.who_am_i_neighbour(i,weights,num_neighbours) for i in range(popu_size)]
     # print("d")
-    evas=Evaluate.evaluate(population,layout)
+    evas=evaluate.evaluate(population,layout)
     # print("e")
 
-    reference=Init.init_reference_point(evas,objectives)
+    reference=init.init_reference_point(evas,objectives)
 
-    gbips=[Evaluate.gbip(weights[i],evas[i],reference, 2, objectives) for i in range(popu_size)]
+    gbips=[evaluate.gbip(weights[i],evas[i],reference, 2, objectives) for i in range(popu_size)]
 
-    offsprings=Crossover.crossover(population,neighbours,layout)
-    offspring_evas=Evaluate.evaluate(offsprings,layout)
+    offsprings=crossover.crossover(population,neighbours,layout)
+    offspring_evas=evaluate.evaluate(offsprings,layout)
 
     EP=[]
     EP_eva=[]
@@ -55,13 +53,13 @@ def run():
         iter_count+=1
         print(f"\t GEN: {iter_count}")
 
-        reference=Evaluate.update_ref(offspring_evas,reference,objectives)
-        gbips=[Evaluate.gbip(weights[i],evas[i],reference, 2, objectives) for i in range(popu_size)]
-        EP, EP_eva=Selection.update_EP(offsprings,offspring_evas,EP,EP_eva,objectives)
-        population, evas, gbips=Selection.selection(weights,population,evas,offsprings,offspring_evas,neighbours,gbips,objectives,reference, replace_limit)
+        reference=evaluate.update_ref(offspring_evas,reference,objectives)
+        gbips=[evaluate.gbip(weights[i],evas[i],reference, 2, objectives) for i in range(popu_size)]
+        EP, EP_eva=selection.update_EP(offsprings,offspring_evas,EP,EP_eva,objectives)
+        population, evas, gbips=selection.selection(weights,population,evas,offsprings,offspring_evas,neighbours,gbips,objectives,reference, replace_limit)
 
-        offsprings=Crossover.crossover(population,neighbours,layout)
-        offspring_evas=Evaluate.evaluate(offsprings,layout)
+        offsprings=crossover.crossover(population,neighbours,layout)
+        offspring_evas=evaluate.evaluate(offsprings,layout)
 
         # Visual.distribution(EP,target)
         print(reference)
@@ -110,8 +108,6 @@ def run():
     # print(EP_eva[min_indices[0]])
     for i,idx in enumerate(min_indices):
         layout.display(EP[idx],EP_eva[idx],name=f'top {i+1}')
-
-run()
 
 
 

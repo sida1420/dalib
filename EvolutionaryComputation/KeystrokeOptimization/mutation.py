@@ -1,6 +1,6 @@
 import random
 
-from Classes import Layout
+from classes import Layout
 
 def binary_swap(ind,layout):
     for i in range(len(ind)):

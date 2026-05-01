@@ -1,7 +1,7 @@
 
 import random
-from Vector import Vector
-from Classes import Layout
+from vector import Vector
+from classes import Layout
 import random
 def init(layout:Layout):
     indices=random.sample(layout.available_keys,len(layout.available_keys))

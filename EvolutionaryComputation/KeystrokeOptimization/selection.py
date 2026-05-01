@@ -8,7 +8,7 @@ def dominate(eva1, eva2, objectives):
         if eva1[key]<eva2[key]:
             count+=1
     return count>0
-import Evaluate
+import evaluate
 
 def update_EP(offsprings,offspring_eva, EP, EP_eva, objectives):
     new_EP=[]
@@ -57,7 +57,7 @@ def selection(weights, population, evas, offsprings, offspring_eva, neighbours, 
         for ind_idx in local_neighs:
 
             neigh_gbip=gbips[ind_idx]
-            offspring_gbip=Evaluate.gbip(weights[ind_idx],offspring_eva[i],reference,2,objectives)
+            offspring_gbip=evaluate.gbip(weights[ind_idx],offspring_eva[i],reference,2,objectives)
 
             if offspring_gbip<neigh_gbip:
                 replace_count+=1

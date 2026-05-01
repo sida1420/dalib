@@ -1,6 +1,6 @@
 import random
 import math
-from Classes import Layout
+from classes import Layout
 
 
 
@@ -191,11 +191,11 @@ def sequence_costs(ind, layout:Layout):
 
 
 
-from Init import init
-l=Layout()
-i=init(l)
-l.display(i)
-print(sequence_costs(i,l))
+# from Init import init
+# l=Layout()
+# i=init(l)
+# l.display(i)
+# print(sequence_costs(i,l))
 
 
 def evaluate(population, layout):
@@ -217,7 +217,7 @@ def evaluate(population, layout):
 # target=[Point(0,0.5),Point(0.5,0.5),Point(0.6,0.5),Point(1,0.5)]
 # print(evaluate([[1,0,0,0,0,0,0,0,0,0],],target))
 
-from Vector import Vector
+from vector import Vector
 def gbip(weight, eva, reference, penalty, objectives):
     v_eva=Vector([eva[obj] for obj in objectives])
     nor_weight=weight/abs(weight)

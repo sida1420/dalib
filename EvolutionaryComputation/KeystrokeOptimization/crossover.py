@@ -1,8 +1,8 @@
 
 import random
 
-from Classes import Layout
-import Mutation
+from classes import Layout
+import mutation
 
 
 # def random_position(p1, p2):
@@ -85,7 +85,7 @@ def crossover(population, neighbours, layout):
         child=cycle_crossover(p1,p2)
 
         if random.random()<0.5:
-            child=Mutation.mutate(child,layout)
+            child=mutation.mutate(child,layout)
 
         offsprings.append(child)
     return offsprings
