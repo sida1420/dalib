@@ -2,7 +2,7 @@ from node import Node
 import kdtree
     
 
-def network_config(nodes, CHs, R_max, base_pos, hopping_factor, base_dists, dist_matrix, residual_e):
+def network_config(nodes, CHs, R_max, d0, base_pos, hopping_factor, base_dists, dist_matrix, residual_e):
     CH_nodes=[Node(idx,isCH=True) for idx in CHs]
 
     tree=kdtree.KDTree(True,sorted(CHs, key=lambda idx: nodes[idx].x), sorted(CHs,key=lambda idx: nodes[idx].y))
@@ -19,8 +19,7 @@ def network_config(nodes, CHs, R_max, base_pos, hopping_factor, base_dists, dist
             return None
         node_node=Node(i)
         CH_nodes[idx].branches.append(node_node)
-        node_node.set_parent(idx)
-
+        node_node.set_parent(best)
     base=Node(-1)
 
     for node in CH_nodes:
@@ -30,9 +29,13 @@ def network_config(nodes, CHs, R_max, base_pos, hopping_factor, base_dists, dist
             node.set_parent(base.idx)
         else:
             #list all nodes closer to base and in communication range
-            candidates=[cnode for cnode in CH_nodes if cnode.idx!=node.idx and dist_matrix[node.idx][cnode.idx]<R_max and dist>base_dists[cnode.idx]]
+            candidates=[cnode for cnode in CH_nodes if cnode.idx!=node.idx and dist_matrix[node.idx][cnode.idx]<R_max and dist>base_dists[cnode.idx] and residual_e[cnode.idx]>0]
 
             if len(candidates)==0:
+                # if dist<R_max:
+                #     base.branches.append(node)
+                #     node.set_parent(base.idx)
+
                 return None
                 # base.branches.append(node)
                 # node.set_parent(base.idx)
@@ -61,24 +64,24 @@ def E_data_receiving(E_elec, bit_count):
 
 
 def E_data_aggregating(E_agg, bit_count):
-    return E_agg*bit_count
+    return 0#E_agg*bit_count
 
 def E_transmitting(E_elec, free_space_coeff, multipath_coeff, dist, d0, bit_count):
     if dist<d0:
         return bit_count*(E_elec+free_space_coeff*dist**2)
     return bit_count*(E_elec+multipath_coeff*dist**4)
 
-def E_m(E_elec, free_space_coeff, E_agg, multipath_coeff, single_node_bit, receive_bit, relay_bit, dist, d0):
-    E_rx=E_data_receiving(E_elec,receive_bit+relay_bit)
-    E_da=E_data_aggregating(E_agg, single_node_bit+receive_bit)
-    E_tx=E_transmitting(E_elec,free_space_coeff,multipath_coeff, dist, d0, relay_bit+single_node_bit)
+def E_m(E_elec, free_space_coeff, E_agg, multipath_coeff, single_node_bit, receive_bit, relay_bit, ctrl_bit, num_branches, dist, d0):
+    E_rx=E_data_receiving(E_elec,receive_bit+relay_bit+ctrl_bit*num_branches)
+    E_da=E_data_aggregating(E_agg, single_node_bit+receive_bit) if receive_bit>0 else 0
+    E_tx=E_transmitting(E_elec,free_space_coeff,multipath_coeff, dist, d0, relay_bit+single_node_bit+ctrl_bit)
 
 
     return E_rx+E_da+E_tx
 
 from collections import deque
 
-def energy_consumption(nodes, net, d0, bit_count, base_dists, dist_matrix, E_elec, E_agg, free_space_coeff, multipath_coeff):
+def energy_consumption(nodes, net, d0, bit_count, ctrl_bit, base_dists, dist_matrix, E_elec, E_agg, free_space_coeff, multipath_coeff):
 
 
     qu=deque([net])
@@ -97,16 +100,19 @@ def energy_consumption(nodes, net, d0, bit_count, base_dists, dist_matrix, E_ele
     E_m_list=[0]*len(nodes)
 
     for i in range(len(topology_net)-1,0,-1):
-        receive_bit=len(topology_net[i].branches)*bit_count
+        receive_bit=0
         relay_bit=0
 
         for branch in topology_net[i].branches:
-            relay_bit+=branch.relay_data
+            if branch.isCH:
+                relay_bit+=branch.relay_data
+            else:
+                receive_bit+=bit_count
 
-        topology_net[i].relay_data=bit_count+relay_bit
+        topology_net[i].relay_data=bit_count+relay_bit if topology_net[i].isCH else 0
         dist=dist_matrix[topology_net[i].idx][topology_net[i].p_idx] if topology_net[i].p_idx!=-1 else base_dists[topology_net[i].idx]
 
-        E=E_m(E_elec,free_space_coeff,E_agg,multipath_coeff,bit_count, receive_bit, relay_bit, dist,d0)
+        E=E_m(E_elec,free_space_coeff,E_agg,multipath_coeff,bit_count, receive_bit, relay_bit, ctrl_bit, len(topology_net[i].branches), dist,d0)
         E_sum+=E
         E_m_list[topology_net[i].idx]=E
     
