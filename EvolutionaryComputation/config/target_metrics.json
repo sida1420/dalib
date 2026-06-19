@@ -1,7 +1,0 @@
-{
-    "finger_cost": 10,
-    "movement_cost": 15,
-    "use_count_cost": 20,
-    "roll_cost": 5,
-    "distance_cost": 10
-}
