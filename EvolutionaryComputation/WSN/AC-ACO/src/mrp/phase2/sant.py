@@ -5,7 +5,14 @@ from dataclasses import dataclass
 
 from mrp.config import MRPConfig
 from mrp.phase2.aant import choose_aant_sensor_neighbor, should_create_aant
-from mrp.phase2.heuristic import HeuristicBounds, calculate_eta, calculate_mu
+from mrp.phase2.heuristic import (
+    HeuristicBounds,
+    _calculate_eta_from_validated_bounds,
+    _calculate_mu_from_validated_snapshot,
+    _validate_heuristic_parameters,
+    calculate_eta,
+    calculate_mu,
+)
 from mrp.phase2.pheromone import update_local_pheromone
 from mrp.phase2.sant_validation import (
     SANTInputError,
@@ -63,6 +70,8 @@ def construct_normal_sant_route(
     lambda_coefficient: float,
     ttl: int,
     rng: object,
+    *,
+    hop_observer=None,
 ) -> SANTRouteResult:
     """Construct one SANT route using normal or Algorithm-2 AANT forwarding.
 
@@ -76,11 +85,28 @@ def construct_normal_sant_route(
         start_ch, live_nodes, residual_e, dist_matrix, base_dists,
         communication_radius, pheromone_state, bounds, config, ttl, rng,
     )
+    _validate_heuristic_parameters(bounds, config)
+    return _construct_sant_from_validated_snapshot(
+        start_ch, live_set, residual_e, dist_matrix, base_dists, hop_counts,
+        communication_radius, pheromone_state, bounds, config,
+        lambda_coefficient, ttl, rng, hop_observer,
+    )
+
+
+def _construct_sant_from_validated_snapshot(
+    start_ch, live_nodes, residual_e, dist_matrix, base_dists, hop_counts,
+    communication_radius, pheromone_state, bounds, config, lambda_coefficient,
+    ttl, rng, hop_observer=None,
+) -> SANTRouteResult:
+    """Run one ant after Phase II validated shared immutable inputs once."""
+
+    live_set = set(live_nodes)
     state = _copy_pheromone_state(pheromone_state, live_set)
     path, trace = [start_ch], []
     current, remaining_ttl = start_ch, ttl
     while remaining_ttl > 0:
         if sink_is_reachable(current, base_dists, communication_radius):
+            _observe_hop(hop_observer, "TERMINAL_SINK", current, -1)
             trace.append(_terminal_trace(current, remaining_ttl, tuple(path)))
             return _result(path + [-1], True, remaining_ttl - 1, state, trace)
 
@@ -91,6 +117,7 @@ def construct_normal_sant_route(
             if not candidates:
                 return _result(path, False, remaining_ttl, state, trace, "no_valid_aant_sensor_neighbor")
             next_hop = choose_aant_sensor_neighbor(candidates, rng)
+            _observe_hop(hop_observer, "AANT", current, next_hop)
             remaining_ttl -= 1
             path.append(next_hop)
             trace.append(SANTHopTrace(
@@ -104,12 +131,15 @@ def construct_normal_sant_route(
         outgoing = _outgoing_values(state, current)
         tau = _candidate_tau_values(outgoing, candidates)
         mu = {
-            candidate: calculate_mu(
+            candidate: _calculate_mu_from_validated_snapshot(
                 current, candidate, residual_e, dist_matrix, base_dists, hop_counts, config
             )
             for candidate in candidates
         }
-        eta = {candidate: calculate_eta(value, bounds) for candidate, value in mu.items()}
+        eta = {
+            candidate: _calculate_eta_from_validated_bounds(value, bounds)
+            for candidate, value in mu.items()
+        }
         try:
             probabilities = transition_probabilities(
                 current, candidates, path, tau, eta, dist_matrix, communication_radius, config
@@ -117,6 +147,7 @@ def construct_normal_sant_route(
         except NoValidTransitionError:
             return _result(path, False, remaining_ttl, state, trace, "no_positive_transition_weight")
         next_hop = _sample(probabilities, rng)
+        _observe_hop(hop_observer, "NORMAL_SANT", current, next_hop)
         old_tau = tau[next_hop]
         new_tau = update_local_pheromone(
             current, next_hop, old_tau, residual_e, dist_matrix, lambda_coefficient, config
@@ -174,6 +205,11 @@ def _sample(probabilities: Mapping[int, float], rng: object) -> int:
 
 def _terminal_trace(current: int, ttl: int, path: tuple[int, ...]) -> SANTHopTrace:
     return SANTHopTrace("TERMINAL_SINK", current, (), {}, {}, {}, {}, -1, ttl, ttl - 1, path, None, None)
+
+
+def _observe_hop(observer, mode: str, sender: int, receiver: int) -> None:
+    if observer is not None:
+        observer(mode, sender, receiver)
 
 
 def _result(

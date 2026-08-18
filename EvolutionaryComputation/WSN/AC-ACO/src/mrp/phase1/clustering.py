@@ -59,7 +59,8 @@ def select_cluster_head(
     distributed T_a interval is represented by direct snapshot counting.  With
     a common positive Eq. (25) coefficient, the unique largest positive q_i
     has the shortest timer and is therefore the sole advertised CH.  Ties and
-    all-zero scores are rejected because the paper provides no tie rule.
+    all-zero scores are rejected because the paper provides no tie rule.  A
+    lone survivor of a previously multi-sensor event is selected directly.
     """
 
     node_count = len(nodes)
@@ -77,7 +78,7 @@ def select_cluster_head(
 
     neighbor_counts = {
         sensor_id: _count_event_neighbors(
-            sensor_id, event_ids, dist_matrix, communication_radius
+            sensor_id, candidates, dist_matrix, communication_radius
         )
         for sensor_id in candidates
     }
@@ -95,6 +96,11 @@ def select_cluster_head(
         )
 
     positive_scores = {sensor_id: score for sensor_id, score in scores.items() if score > 0}
+    if not positive_scores and len(candidates) == 1 and len(event_ids) > 1:
+        winner = candidates[0]
+        return ClusterFormationResult.create(
+            winner, (), scores, neighbor_counts
+        )
     if not positive_scores:
         raise ClusterFormationInputError("no event candidate has a finite positive q_i")
     highest_score = max(positive_scores.values())

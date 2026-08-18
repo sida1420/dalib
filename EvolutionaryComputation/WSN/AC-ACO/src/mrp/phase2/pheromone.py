@@ -84,15 +84,34 @@ def update_local_pheromone(
 ) -> float:
     """MRP_PHASE_II Eq. (30), for an already-decided sensor link only."""
 
-    _require_finite_non_negative(old_pheromone, "old pheromone")
-    rho = _rho(config)
     deposit = calculate_local_pheromone_deposit(
         source_id, candidate_id, residual_e, dist_matrix, lambda_coefficient
     )
-    updated = (1 - rho) * old_pheromone + rho * deposit
-    if not math.isfinite(updated) or updated < 0:
-        raise PheromoneInputError("Eq. (30) local pheromone value is not finite")
+    return update_pheromone_with_deposit(old_pheromone, deposit, config)
+
+
+def update_pheromone_with_deposit(
+    old_pheromone: float, delta_tau: float, config: MRPConfig,
+) -> float:
+    """MRP_PHASE_II Eq. (30) shared by SANT local and BANT global updates.
+
+    Eq. (32) can provide a negative ``delta_tau``.  The paper gives no
+    non-negative pheromone constraint, so this primitive returns that raw
+    result rather than clamping it; callers must surface the domain gap.
+    """
+
+    _require_finite_non_negative(old_pheromone, "old pheromone")
+    _require_finite(delta_tau, "delta tau")
+    rho = validate_pheromone_config(config)
+    updated = (1 - rho) * old_pheromone + rho * delta_tau
+    _require_finite(updated, "Eq. (30) pheromone value")
     return updated
+
+
+def validate_pheromone_config(config: MRPConfig) -> float:
+    """Validate and return the shared Eq. (30) evaporation coefficient."""
+
+    return _rho(config)
 
 
 def _sensor_link_values(
@@ -147,7 +166,13 @@ def _require_finite_positive(value: float, label: str) -> None:
 
 
 def _require_finite_non_negative(value: float, label: str) -> None:
+    _require_finite(value, label)
+    if value < 0:
+        raise PheromoneInputError(f"{label} must be finite and non-negative")
+
+
+def _require_finite(value: float, label: str) -> None:
     if isinstance(value, bool) or not isinstance(value, (int, float)):
         raise PheromoneInputError(f"{label} must be numeric")
-    if not math.isfinite(value) or value < 0:
-        raise PheromoneInputError(f"{label} must be finite and non-negative")
+    if not math.isfinite(value):
+        raise PheromoneInputError(f"{label} must be finite")

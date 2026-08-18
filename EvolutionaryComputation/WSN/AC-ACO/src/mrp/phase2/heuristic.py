@@ -38,7 +38,8 @@ def calculate_theta(
     """MRP_PHASE_II Eq. (29), using existing energy/distance snapshots."""
 
     values = _validated_values(
-        source_id, candidate_id, residual_e, dist_matrix, base_dists, hop_counts, config
+        source_id, candidate_id, residual_e, dist_matrix, base_dists, hop_counts,
+        config, False,
     )
     return _calculate_theta_from_values(values, config.k6)
 
@@ -54,8 +55,30 @@ def calculate_mu(
 ) -> float:
     """MRP_PHASE_II Eq. (28), μ_ij = E_j^k4 / d_ij^k5 + θ_ij."""
 
+    return _calculate_mu_from_snapshot(
+        source_id, candidate_id, residual_e, dist_matrix, base_dists,
+        hop_counts, config, False,
+    )
+
+
+def _calculate_mu_from_validated_snapshot(
+    source_id, candidate_id, residual_e, dist_matrix, base_dists, hop_counts, config,
+) -> float:
+    """Internal Eq. (28) hot path after shared snapshot validation."""
+
+    return _calculate_mu_from_snapshot(
+        source_id, candidate_id, residual_e, dist_matrix, base_dists,
+        hop_counts, config, True,
+    )
+
+
+def _calculate_mu_from_snapshot(
+    source_id, candidate_id, residual_e, dist_matrix, base_dists, hop_counts,
+    config, snapshot_validated,
+) -> float:
     values = _validated_values(
-        source_id, candidate_id, residual_e, dist_matrix, base_dists, hop_counts, config
+        source_id, candidate_id, residual_e, dist_matrix, base_dists, hop_counts,
+        config, snapshot_validated,
     )
     mu = values.base_component + _calculate_theta_from_values(values, config.k6)
     if not math.isfinite(mu) or mu < 0:
@@ -68,6 +91,12 @@ def calculate_eta(mu: float, bounds: HeuristicBounds) -> float:
 
     _require_finite_non_negative(mu, "mu")
     _validate_bounds(bounds)
+    return _calculate_eta_from_validated_bounds(mu, bounds)
+
+
+def _calculate_eta_from_validated_bounds(mu: float, bounds: HeuristicBounds) -> float:
+    """Internal Eq. (27) hot path for already validated bounds and finite mu."""
+
     if mu > bounds.mu_max:
         return bounds.eta_max
     if mu >= bounds.mu_min:
@@ -92,18 +121,18 @@ def _validated_values(
     base_dists: Sequence[float],
     hop_counts: Mapping[int, int],
     config: MRPConfig,
+    snapshot_validated: bool,
 ) -> _HeuristicValues:
     node_count = len(residual_e)
     _validate_sensor_pair(source_id, candidate_id, node_count)
-    if len(base_dists) != node_count or len(dist_matrix) != node_count:
-        raise HeuristicInputError("base distances and distance matrix must match residual energy")
-    if any(len(row) != node_count for row in dist_matrix):
-        raise HeuristicInputError("distance matrix must be square over sensor nodes")
-    _require_positive_finite(config.k4, "k4")
-    _require_positive_finite(config.k5, "k5")
-    _require_positive_finite(config.k6, "k6")
-    for energy in residual_e:
-        _require_finite_non_negative(energy, "residual energy")
+    if not snapshot_validated:
+        if len(base_dists) != node_count or len(dist_matrix) != node_count:
+            raise HeuristicInputError("base distances and distance matrix must match residual energy")
+        if any(len(row) != node_count for row in dist_matrix):
+            raise HeuristicInputError("distance matrix must be square over sensor nodes")
+        _validate_heuristic_parameters(None, config)
+        for energy in residual_e:
+            _require_finite_non_negative(energy, "residual energy")
     _require_finite_non_negative(residual_e[candidate_id], "candidate residual energy")
     distance = dist_matrix[source_id][candidate_id]
     _require_positive_finite(distance, "d_ij")
@@ -123,6 +152,16 @@ def _validated_values(
         hop_source,
         hop_candidate,
     )
+
+
+def _validate_heuristic_parameters(bounds: HeuristicBounds | None, config: MRPConfig) -> None:
+    if not isinstance(config, MRPConfig):
+        raise HeuristicInputError("heuristic calculation requires an MRPConfig")
+    _require_positive_finite(config.k4, "k4")
+    _require_positive_finite(config.k5, "k5")
+    _require_positive_finite(config.k6, "k6")
+    if bounds is not None:
+        _validate_bounds(bounds)
 
 
 def _validate_sensor_pair(source_id: int, candidate_id: int, node_count: int) -> None:
