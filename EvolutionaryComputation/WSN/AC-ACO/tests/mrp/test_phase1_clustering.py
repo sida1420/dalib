@@ -74,7 +74,17 @@ def test_dead_event_node_cannot_be_cluster_head():
         _nodes(2), {0, 1}, [0.0, 4.0], [0, 1], {1: 2.0}, _distances([0, 1]), 10, MRPConfig()
     )
     assert result.cluster_head == 1
-    assert result.members == ()
+
+
+def test_dead_event_nodes_do_not_contribute_to_live_candidate_neighbor_counts():
+    result = select_cluster_head(
+        _nodes(3), {0, 1}, [10.0, 10.0, 0.0], [0, 1, 2],
+        {0: 1.0, 1: 1.1}, [[0.0, 1.0, 1.0], [1.0, 0.0, 2.0], [1.0, 2.0, 0.0]],
+        1.5, MRPConfig(),
+    )
+    assert result.cluster_head == 1
+    assert result.neighbor_counts == {0: 1, 1: 1}
+    assert result.members == (0,)
 
 
 def test_node_outside_event_area_cannot_be_cluster_head():
